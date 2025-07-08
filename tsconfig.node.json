@@ -2,7 +2,7 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "target": "ES2023",
-    "lib": ["ES2023"],
+    "lib": ["ES2023", "DOM"], // Added 'DOM' for browser environment support
     "module": "ESNext",
     "skipLibCheck": true,
 
@@ -17,9 +17,10 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
+    "isolatedModules": true, // Corrected from "erasableSyntaxOnly"
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedIndexedAccess": true, // Corrected from "noUncheckedSideEffectImports"
+    "esModuleInterop": true // Recommended addition
   },
   "include": ["vite.config.ts"]
 }
