@@ -1,26 +1,47 @@
 import { useState } from "react";
-import logo from "../../../../assets/logo.png"; // ✅ Adjust this path if needed
+import logo from "../../../../assets/logo.png";
+import Button from "../../../../core/components/button";
 
-const Login: React.FC = () => {
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [userRole, setUserRole] = useState<string>("student"); // Default to 'student'
+type UserRole = "student" | "instructor" | "admin" | "exam_committee";
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [userRole, setUserRole] = useState<UserRole>("student");
+
+  const [showResetForm, setShowResetForm] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLoginSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // co
-    console.log("Email:", email);
-    console.log("Password:", password);
-    console.log("User Role:", userRole);
-    // TODO: Add login logic here
+    console.log("Login attempt:", { email, password, userRole });
+    // TODO: Add login logic
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setResetMessage(`Password reset link sent to ${resetEmail}`);
+      setTimeout(() => {
+        setShowResetForm(false);
+        setResetMessage("");
+      }, 3000);
+    } catch {
+      setResetMessage("Failed to send reset link. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* 🔐 Login Form Container */}
       <div className="flex items-center justify-center px-4 py-12">
         <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md">
-          {/* 🔵 Logo and Welcome Text */}
           <img
             src={logo}
             alt="Debre Tabor University Logo"
@@ -32,80 +53,112 @@ const Login: React.FC = () => {
             Debre Tabor University
           </h1>
 
-          {/* 📝 Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block mb-1 text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
+          {showResetForm ? (
+            <>
+              <h2 className="text-xl font-semibold text-gray-800 mb-4 text-center">
+                Reset Password
+              </h2>
 
-            <div>
-              <label className="block mb-1 text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                type="password"
-                placeholder="Enter your password"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+              {resetMessage && (
+                <div
+                  className={`mb-4 p-3 rounded-lg ${
+                    resetMessage.includes("Failed")
+                      ? "bg-red-100 text-red-700"
+                      : "bg-green-100 text-green-700"
+                  }`}
+                >
+                  {resetMessage}
+                </div>
+              )}
 
-            {/* User Role Selection */}
-            <div>
-              <label
-                htmlFor="user-role"
-                className="block mb-1 text-sm font-medium text-gray-700"
-              >
-                Login as
-              </label>
-              <select
-                id="user-role"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={userRole}
-                onChange={(e) => setUserRole(e.target.value)}
-              >
-                <option value="student">Student</option>
-                <option value="instructor">Instructor</option>
-                <option value="admin">Admin</option>
-                <option value="exam_committee">Exam Committee</option>
-              </select>
-            </div>
+              <form onSubmit={handlePasswordReset} className="space-y-4">
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="Enter your registered email"
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    required
+                  />
+                </div>
 
-            <button
-              type="submit"
-              className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-            >
-              Sign In
-            </button>
-          </form>
+                <Button type="submit" loading={isLoading}>
+                  Send Reset Link
+                </Button>
 
-          {/* Removed: Footer Links (Forgot password, Create account) */}
-          {/* <div className="mt-6 text-center text-sm text-gray-600">
-            <a
-              href="/forgot-password"
-              className="text-blue-600 hover:underline block mb-2"
-            >
-              Forgot your password?
-            </a>
-            <span>
-              Don't have an account?{" "}
-              <a href="/signup" className="text-blue-600 hover:underline">
-                Create Account
-              </a>
-            </span>
-          </div> */}
+                <Button
+                  type="button"
+                  variant="text"
+                  onClick={() => setShowResetForm(false)}
+                >
+                  Back to Login
+                </Button>
+              </form>
+            </>
+          ) : (
+            <>
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter your password"
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Login as
+                  </label>
+                  <select
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={userRole}
+                    onChange={(e) => setUserRole(e.target.value as UserRole)}
+                  >
+                    <option value="student">Student</option>
+                    <option value="instructor">Instructor</option>
+                    <option value="admin">Admin</option>
+                    <option value="exam_committee">Exam Committee</option>
+                  </select>
+                </div>
+
+                <Button type="submit">Login</Button>
+
+                <Button
+                  type="button"
+                  variant="text"
+                  className="text-sm"
+                  onClick={() => setShowResetForm(true)}
+                >
+                  Forgot your password?
+                </Button>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </div>
