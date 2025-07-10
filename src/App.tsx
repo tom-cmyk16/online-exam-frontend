@@ -1,18 +1,12 @@
-import { useState } from "react";
+import React from "react";
 import "./App.css";
+import Login from "./features/authentication/login";
 
-import StudentDashboard from "./features/student/presentation/pages/studentpage";
-// import Login from "./features/authentication/presentation/pages/login-page";
-
-function App() {
-  const [] = useState(0);
-
-  return (
-    <>
-      {" "}
-      <StudentDashboard />
-    </>
-  );
-}
+const App: React.FC = () => (
+  <div className="App">
+    <Login />
+    {/* <InstructorDashboard /> */}
+  </div>
+);
 
 export default App;
