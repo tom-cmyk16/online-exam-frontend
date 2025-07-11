@@ -1,6 +1,6 @@
 import React from "react";
 
-import Login from "../../features/authentication/login";
+import Login from "../authentication/presentation/pages/login";
 
 const ExaM = () => {
   return (

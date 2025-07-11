@@ -1,12 +1,7 @@
 import React, { useState } from "react";
-import logo from "../../assets/logo.png";
-import PasswordResetForm from "../../component/authenticationcompont/PasswordResetForm";
-import LoginForm from "../../component/authenticationcompont/LoginForm";
-import {
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail,
-} from "firebase/auth";
-import { auth } from "../../firebase/config";
+import logo from "../../../../assets/logo.png";
+import PasswordResetForm from "../component/PasswordResetForm";
+import LoginForm from "../component/LoginForm";
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState("");
@@ -22,15 +17,6 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        username,
-        password
-      );
-
-      const user = userCredential.user;
-      console.log("Logged in user:", user);
-
       // Redirect or navigate to role-based dashboard (example only)
       switch (userRole) {
         case "student":
@@ -61,7 +47,6 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await sendPasswordResetEmail(auth, resetEmail);
       setResetMessage(`Password reset link sent to ${resetEmail}`);
       setTimeout(() => {
         setShowResetForm(false);
@@ -108,6 +93,7 @@ const LoginPage: React.FC = () => {
             onSubmit={handleLoginSubmit}
             isLoading={isLoading}
             onForgotPasswordClick={() => setShowResetForm(true)}
+            //np={undefined}
           />
         )}
       </div>

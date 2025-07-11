@@ -1,5 +1,6 @@
 import React from "react";
-import Button from "../../component/studentpagescompont/Buttons";
+import TextBox from "../../../../core/component/commonTextBox";
+import Button from "../../../../core/component/commonButton";
 
 interface PasswordResetFormProps {
   resetEmail: string;
@@ -37,29 +38,27 @@ const PasswordResetForm: React.FC<PasswordResetFormProps> = ({
 
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
-        <label className="block mb-1 text-sm font-medium text-gray-700">
-          Email Address
-        </label>
-        <input
-          type="email"
-          placeholder="Enter your registered email"
-          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <TextBox
+          name="email"
+          label="enter your email"
           value={resetEmail}
           onChange={onResetEmailChange}
-          required
-        />
+        ></TextBox>
       </div>
 
       <Button
-        label="Send Reset Link"
+        title="Send Reset Link"
         type="submit"
-        loading={isLoading}
-        variant="secondary"
-      />
+        fullWidth
+        isLoading={isLoading}
+        variant="primary"
+      >
+        Send Reset Link
+      </Button>
 
       <button
         type="button"
-        className="text-blue-600 underline mt-2 text-sm"
+        className="text-blue-600 underline mt-2 text-sm cursor-pointer"
         onClick={onBackToLogin}
       >
         Back to Login
