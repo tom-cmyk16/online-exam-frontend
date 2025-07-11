@@ -20,7 +20,7 @@ const LoginPage: React.FC = () => {
       // Redirect or navigate to role-based dashboard (example only)
       switch (userRole) {
         case "student":
-          window.location.href = "/student/dashboard";
+          window.location.href = "/dashboard";
           break;
         case "instructor":
           window.location.href = "/instructor/dashboard";
