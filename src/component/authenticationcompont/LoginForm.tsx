@@ -4,7 +4,7 @@ import Button from "../../component/studentpagescompont/Buttons";
 interface LoginFormProps {
   username: string;
   password: string;
-  userRole: string;
+  userRole: string;np
   onUsernameChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onPasswordChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onUserRoleChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
