@@ -2,6 +2,11 @@ import React, { useState } from "react";
 import logo from "../../assets/logo.png";
 import PasswordResetForm from "../../component/authenticationcompont/PasswordResetForm";
 import LoginForm from "../../component/authenticationcompont/LoginForm";
+import {
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+} from "firebase/auth";
+import { auth } from "../../firebase/config";
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState("");
@@ -12,31 +17,58 @@ const LoginPage: React.FC = () => {
   const [resetMessage, setResetMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // ✅ Login logic with Firebase Auth
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      console.log("Logging in with:", { username, password, userRole });
-      // Add login logic here
-    } catch {
-      alert("Login failed.");
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        username,
+        password
+      );
+
+      const user = userCredential.user;
+      console.log("Logged in user:", user);
+
+      // Redirect or navigate to role-based dashboard (example only)
+      switch (userRole) {
+        case "student":
+          window.location.href = "/student/dashboard";
+          break;
+        case "instructor":
+          window.location.href = "/instructor/dashboard";
+          break;
+        case "admin":
+          window.location.href = "/admin";
+          break;
+        case "exam_committee":
+          window.location.href = "/exam-committee";
+          break;
+        default:
+          alert("Invalid role");
+      }
+    } catch (error: any) {
+      console.error("Login failed:", error.message);
+      alert("Login failed. " + error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ✅ Reset password logic with Firebase
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await sendPasswordResetEmail(auth, resetEmail);
       setResetMessage(`Password reset link sent to ${resetEmail}`);
       setTimeout(() => {
         setShowResetForm(false);
         setResetMessage("");
       }, 3000);
-    } catch {
-      setResetMessage("Failed to send reset link.");
+    } catch (error: any) {
+      setResetMessage("Failed to send reset link: " + error.message);
     } finally {
       setIsLoading(false);
     }
