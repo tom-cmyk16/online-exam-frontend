@@ -1,6 +1,6 @@
 // src/features/student/pages/SubmitAnswer.tsx
 import React, { useState } from "react";
-import StudentLayout from "../state/StudentLayout";
+import StudentLayout from "./StudentLayout";
 
 const SubmitAnswer: React.FC = () => {
   const [answer, setAnswer] = useState("");

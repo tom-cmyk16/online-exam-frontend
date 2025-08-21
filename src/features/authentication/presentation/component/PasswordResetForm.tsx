@@ -1,70 +1,60 @@
-import React from "react";
-import TextBox from "../../../../core/component/commonTextBox";
-import Button from "../../../../core/component/commonButton";
-
+import React, { useState } from "react";
 interface PasswordResetFormProps {
-  resetEmail: string;
-  onResetEmailChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onReset: (email: string) => Promise<void>;
+  onCancel: () => void;
   isLoading: boolean;
-  resetMessage: string;
-  onBackToLogin: () => void;
 }
 
 const PasswordResetForm: React.FC<PasswordResetFormProps> = ({
-  resetEmail,
-  onResetEmailChange,
-  onSubmit,
+  onReset,
+  onCancel,
   isLoading,
-  resetMessage,
-  onBackToLogin,
-}) => (
-  <>
-    <h2 className="text-xl font-semibold text-gray-800 mb-4 text-center">
-      Reset Password
-    </h2>
+}) => {
+  const [email, setEmail] = useState("");
 
-    {resetMessage && (
-      <div
-        className={`mb-4 p-3 rounded-lg text-sm ${
-          resetMessage.includes("Failed")
-            ? "bg-red-100 text-red-700"
-            : "bg-green-100 text-green-700"
-        }`}
-      >
-        {resetMessage}
-      </div>
-    )}
-
-    <form onSubmit={onSubmit} className="space-y-4">
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await onReset(email);
+  };
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <TextBox
-          name="email"
-          label="enter your email"
-          value={resetEmail}
-          onChange={onResetEmailChange}
-        ></TextBox>
+        <label
+          htmlFor="email"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Email Address
+        </label>
+        <input
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="mt-1 w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter your registered email"
+        />
       </div>
 
-      <Button
-        title="Send Reset Link"
-        type="submit"
-        fullWidth
-        isLoading={isLoading}
-        variant="primary"
-      >
-        Send Reset Link
-      </Button>
-
-      <button
-        type="button"
-        className="text-blue-600 underline mt-2 text-sm cursor-pointer"
-        onClick={onBackToLogin}
-      >
-        Back to Login
-      </button>
+      <div className="flex justify-between">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={isLoading}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+        >
+          Back to Login
+        </button>
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+        >
+          {isLoading ? "Processing..." : "Reset Password"}
+        </button>
+      </div>
     </form>
-  </>
-);
+  );
+};
 
 export default PasswordResetForm;

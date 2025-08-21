@@ -1,6 +1,6 @@
 // src/features/student/pages/ReadQuestion.tsx
 import React from "react";
-import StudentLayout from "../state/StudentLayout";
+import StudentLayout from "./StudentLayout";
 
 const ReadQuestion: React.FC = () => {
   return (
@@ -10,5 +10,4 @@ const ReadQuestion: React.FC = () => {
     </StudentLayout>
   );
 };
-
 export default ReadQuestion;

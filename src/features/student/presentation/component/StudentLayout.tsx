@@ -17,5 +17,4 @@ const StudentLayout: React.FC<Props> = ({ children }) => {
     </div>
   );
 };
-
 export default StudentLayout;

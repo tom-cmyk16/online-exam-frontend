@@ -1,6 +1,6 @@
 // src/features/student/pages/SeeResult.tsx
 import React from "react";
-import StudentLayout from "../state/StudentLayout";
+import StudentLayout from "./StudentLayout";
 
 const SeeResult: React.FC = () => {
   return (
