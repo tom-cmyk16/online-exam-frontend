@@ -8,6 +8,7 @@ const Sidebar: React.FC = () => {
     { name: "Courses", path: "/courses", icon: "📚" },
     { name: "Students", path: "/students", icon: "👨‍🎓" },
     { name: "Settings", path: "/settings", icon: "⚙️" },
+    { name: "admin", path: "/admin", icon: "⚙️" },
   ];
 
   return (

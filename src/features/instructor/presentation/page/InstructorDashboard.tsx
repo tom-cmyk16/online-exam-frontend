@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import QuestionForm from "../../component/instructorcompont/QuestionForm";
-import StudentResults from "../../component/instructorcompont/StudentResults";
-import ChangePasswordForm from "../../component/instructorcompont/ChangePasswordForm";
-import InstructorProfile from "../../component/instructorcompont/InstructorProfile";
+import QuestionForm from "../component/QuestionForm";
+import StudentResults from "../../../../component/instructorcompont/StudentResults";
+import ChangePasswordForm from "../component/ChangePasswordForm";
+import InstructorProfile from "../component/InstructorProfile";
 
 const InstructorDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
