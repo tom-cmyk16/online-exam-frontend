@@ -1,47 +1,86 @@
-import React from "react";
-import { NavLink } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import RoleStand from "./Role";
+import { Menu, ChevronLeft } from "lucide-react";
 
 const Sidebar: React.FC = () => {
-  const navItems = [
-    { name: "Dashboard", path: "/dashboard", icon: "📊" },
-    { name: "Instructor", path: "/instructor", icon: "📚" },
-    { name: "Courses", path: "/courses", icon: "📚" },
-    { name: "Students", path: "/students", icon: "👨‍🎓" },
-    { name: "Settings", path: "/settings", icon: "⚙️" },
-  ];
+  const role = RoleStand((state) => state.role);
+  const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
+
+  const toggleSidebar = () => setCollapsed((prev) => !prev);
+
+  const menuItems: Record<string, { path: string; label: string }[]> = {
+    admin: [
+      { path: "/main/admin/dashboard", label: "Admin-Dashboard" },
+      { path: "/main/admin/manage-users", label: "Manage Users" },
+      { path: "/main/admin/settings", label: "System-Settings" },
+    ],
+    instructor: [
+      { path: "/main/instructor/dashboard", label: " instru Dashboard" },
+      {
+        path: "/main/instructor/assigned-pages",
+        label: "Assigned Courses view",
+      },
+      { path: "/main/instructor/exam-creation", label: "Exam Management" },
+      { path: "/main/instructor/student-results", label: "Student Results" },
+    ],
+    student: [{ path: "/main", label: "Dashboard" }],
+    departmentHead: [
+      {
+        path: "/main/department-head/dashboard",
+        label: "Depart Dashboard",
+      },
+      {
+        path: "/main/department-head/maged -student",
+        label: "Manage student",
+      },
+
+      {
+        path: "/main/department-head/assign-course",
+        label: "Managed cources",
+      },
+      { path: "/main/department-head/student result", label: "student result" },
+    ],
+    examCommittee: [
+      {
+        path: "/main/exam-committee/dashboard",
+        label: "examcommita-Dashboard",
+      },
+    ],
+    guest: [{ path: "/login", label: "Login" }],
+  };
 
   return (
-    <div className="w-64 bg-white shadow-md">
-      <div className="p-4 h-full flex flex-col">
-        <div className="text-xl font-bold mb-8 p-2">Instructor Portal</div>
+    <aside
+      className={`h-screen bg-green-50 border-r border-green-300 p-2 shadow-md overflow-y-auto transition-all duration-300 ${
+        collapsed ? "w-10" : "w-45"
+      }`}
+    >
+      <button
+        className="text-green-700 hover:text-green-900 hover:bg-green-100 rounded p-2 mb-4 transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+        onClick={toggleSidebar}
+      >
+        {collapsed ? <Menu size={20} /> : <ChevronLeft size={20} />}
+      </button>
 
-        <nav className="flex-1">
-          <ul className="space-y-2">
-            {navItems.map((item) => (
-              <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `flex items-center p-3 rounded-lg transition-colors ${
-                      isActive
-                        ? "bg-blue-100 text-blue-600"
-                        : "hover:bg-gray-100 text-gray-700"
-                    }`
-                  }
-                >
-                  <span className="mr-3">{item.icon}</span>
-                  {item.name}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className="mt-auto p-3 text-sm text-gray-500">
-          © 2023 Instructor Portal
-        </div>
-      </div>
-    </div>
+      <ul className="space-y-2">
+        {menuItems[role]?.map((item) => (
+          <li key={item.path}>
+            <Link
+              to={item.path}
+              className={`flex items-center gap-2 text-base font-medium rounded px-3 py-2 transition-colors duration-200 ${
+                location.pathname.startsWith(item.path)
+                  ? "bg-green-600 text-white"
+                  : "text-green-800 hover:bg-green-600 hover:text-white"
+              }`}
+            >
+              {!collapsed && item.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </aside>
   );
 };
 

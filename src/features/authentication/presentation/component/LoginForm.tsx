@@ -6,27 +6,24 @@ interface LoginFormProps {
   username: string;
   password: string;
   userRole: string;
+  onSubmit?: (e: React.FormEvent) => void;
+  onForgotPasswordClick?: () => void;
   onUsernameChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onPasswordChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onUserRoleChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  onSubmit: (e: React.FormEvent) => void;
   isLoading: boolean;
-  onForgotPasswordClick: () => void;
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({
   username,
   password,
-  userRole,
   onUsernameChange,
   onPasswordChange,
-  onUserRoleChange,
-  onSubmit,
   isLoading,
-  onForgotPasswordClick,
-}) => (
-  <form onSubmit={onSubmit} className="space-y-4">
-    <div>
+  onSubmit, // ✅ Use the function passed from LoginPage
+}) => {
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
       <TextBox
         label="Username"
         name="username"
@@ -34,8 +31,6 @@ const LoginForm: React.FC<LoginFormProps> = ({
         onChange={onUsernameChange}
         placeholder="Enter your username"
       />
-    </div>
-    <div>
       <TextBox
         label="Password"
         name="password"
@@ -43,19 +38,11 @@ const LoginForm: React.FC<LoginFormProps> = ({
         onChange={onPasswordChange}
         placeholder="Enter your password"
       />
-    </div>
-
-    <Button variant="primary" fullWidth onClick={() => console.log("Clicked!")}>
-      Login
-    </Button>
-    <button
-      type="button"
-      className="text-blue-600 underline mt-2 text-sm cursor-pointer"
-      onClick={onForgotPasswordClick}
-    >
-      Forgot your password?
-    </button>
-  </form>
-);
+      <Button variant="primary" fullWidth type="submit" isLoading={isLoading}>
+        Login
+      </Button>
+    </form>
+  );
+};
 
 export default LoginForm;

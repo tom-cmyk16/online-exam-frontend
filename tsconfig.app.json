@@ -16,7 +16,11 @@
     "noUncheckedIndexedAccess": true,
     "jsx": "react-jsx",
     "noEmit": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "src/core/component/.tsx", "context"]
 }
