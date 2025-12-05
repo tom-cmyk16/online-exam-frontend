@@ -42,8 +42,8 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onClose }) => {
     confirmPassword: "",
   });
 
-  const userRole = localStorage.getItem("role") || "";
-  const isStudent = userRole === "student";
+  // const userRole = localStorage.getItem("role") || "";
+  // const isStudent = userRole === "student";
 
   // Format role name for display
   const getFormattedRole = (role: string): string => {

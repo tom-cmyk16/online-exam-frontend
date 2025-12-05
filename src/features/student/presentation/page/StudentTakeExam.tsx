@@ -465,13 +465,6 @@ const StudentTakesExam: FC = () => {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const scrollToQuestion = (index: number) => {
-    setCurrentQuestionIndex(index);
-    document
-      .getElementById(`q-${index}`)
-      ?.scrollIntoView({ behavior: "smooth" });
-  };
-
   const refreshExams = async () => {
     if (!currentUser) return;
     setLoading(true);
@@ -704,20 +697,20 @@ const StudentTakesExam: FC = () => {
 
           {/* Navigation boxes */}
           {selectedExam.questions && selectedExam.questions.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-2 mb-6">
               {selectedExam.questions.map((q, idx) => (
               <button
                 key={idx}
-                className={`w-10 h-10 rounded text-white ${
+                className={`w-10 h-10 rounded text-white font-semibold transition-all ${
                   currentQuestionIndex === idx
-                    ? "bg-blue-600"
+                    ? "bg-blue-600 ring-2 ring-blue-300"
                     : flags[idx]
                     ? "bg-red-600"
                     : answers[q._id || ""]
                     ? "bg-green-600"
                     : "bg-gray-400"
                 }`}
-                onClick={() => scrollToQuestion(idx)}
+                onClick={() => setCurrentQuestionIndex(idx)}
               >
                 {idx + 1}
               </button>
@@ -725,116 +718,194 @@ const StudentTakesExam: FC = () => {
             </div>
           )}
 
-          {/* Questions */}
-          {selectedExam.questions && selectedExam.questions.length > 0 && selectedExam.questions.map((q, idx) => (
-            <div
-              key={idx}
-              id={`q-${idx}`}
-              className="border p-4 rounded mb-4 relative"
-            >
-              <div className="flex justify-between items-center mb-2">
-                <div>
-                  Question {idx + 1}: {q.text}
-                </div>
-                <button
-                  onClick={() => toggleFlag(idx)}
-                  className={`px-2 py-1 rounded text-white ${
-                    flags[idx] ? "bg-red-600" : "bg-gray-400"
-                  }`}
-                >
-                  {flags[idx] ? "Flagged" : "Flag"}
-                </button>
-              </div>
-
-              {q.type === "text" && (
-                <input
-                  type="text"
-                  value={answers[q._id || ""] || ""}
-                  onChange={(e) => handleAnswerChange(q._id || "", e.target.value)}
-                  className="w-full p-2 border rounded"
-                  placeholder="Type your answer here..."
-                />
-              )}
-
-              {q.type === "multiple-choice" &&
-                q.options?.map((opt, i) => (
-                  <div key={i}>
-                    <label>
-                      <input
-                        type="radio"
-                        name={`q${idx}`}
-                        value={opt}
-                        checked={answers[q._id || ""] === opt}
-                        onChange={() => handleAnswerChange(q._id || "", opt)}
-                        className="mr-2"
-                      />
-                      {opt}
-                    </label>
+          {/* Current Question Card */}
+          {selectedExam.questions && selectedExam.questions.length > 0 && (() => {
+            const q = selectedExam.questions[currentQuestionIndex];
+            const idx = currentQuestionIndex;
+            
+            if (!q) return null;
+            
+            return (
+              <div className="bg-white border-2 border-gray-300 rounded-lg shadow-lg p-6 mb-6">
+                {/* Question Header */}
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <div className="text-sm text-gray-500 mb-2">
+                      Question {idx + 1} of {selectedExam.questions.length}
+                    </div>
+                    <div className="text-lg font-semibold text-gray-800">
+                      {q.text}
+                    </div>
+                    {q.marks && (
+                      <div className="text-sm text-blue-600 mt-2">
+                        Marks: {q.marks}
+                      </div>
+                    )}
                   </div>
-                ))}
-
-              {q.type === "true-false" && (
-                <div className="flex gap-4">
-                  {["True", "False"].map((val) => (
-                    <label key={val}>
-                      <input
-                        type="radio"
-                        name={`q${idx}`}
-                        value={val}
-                        checked={answers[q._id || ""] === val}
-                        onChange={() => handleAnswerChange(q._id || "", val)}
-                        className="mr-2"
-                      />
-                      {val}
-                    </label>
-                  ))}
+                  <button
+                    onClick={() => toggleFlag(idx)}
+                    className={`ml-4 px-4 py-2 rounded font-semibold transition-all ${
+                      flags[idx] 
+                        ? "bg-red-600 hover:bg-red-700 text-white" 
+                        : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                    }`}
+                  >
+                    {flags[idx] ? "🚩 Flagged" : "🏳️ Flag"}
+                  </button>
                 </div>
-              )}
 
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={() => clearAnswer(q._id || "")}
-                  className="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded"
-                >
-                  Clear
-                </button>
+                {/* Answer Section */}
+                <div className="mt-6">
+                  {q.type === "text" && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Your Answer:
+                      </label>
+                      <textarea
+                        value={answers[q._id || ""] || ""}
+                        onChange={(e) => handleAnswerChange(q._id || "", e.target.value)}
+                        className="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[120px]"
+                        placeholder="Type your answer here..."
+                      />
+                    </div>
+                  )}
+
+                  {q.type === "multiple-choice" && (
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Select one option:
+                      </label>
+                      {q.options?.map((opt, i) => (
+                        <div 
+                          key={i}
+                          className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                            answers[q._id || ""] === opt
+                              ? "border-blue-600 bg-blue-50"
+                              : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"
+                          }`}
+                          onClick={() => handleAnswerChange(q._id || "", opt)}
+                        >
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`q${idx}`}
+                              value={opt}
+                              checked={answers[q._id || ""] === opt}
+                              onChange={() => handleAnswerChange(q._id || "", opt)}
+                              className="mr-3 w-5 h-5"
+                            />
+                            <span className="text-gray-800">{opt}</span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {q.type === "true-false" && (
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Select True or False:
+                      </label>
+                      <div className="flex gap-4">
+                        {["True", "False"].map((val) => (
+                          <div 
+                            key={val}
+                            className={`flex-1 border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                              answers[q._id || ""] === val
+                                ? "border-blue-600 bg-blue-50"
+                                : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"
+                            }`}
+                            onClick={() => handleAnswerChange(q._id || "", val)}
+                          >
+                            <label className="flex items-center justify-center cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`q${idx}`}
+                                value={val}
+                                checked={answers[q._id || ""] === val}
+                                onChange={() => handleAnswerChange(q._id || "", val)}
+                                className="mr-3 w-5 h-5"
+                              />
+                              <span className="text-lg font-semibold text-gray-800">{val}</span>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Clear Answer Button */}
+                  {answers[q._id || ""] && (
+                    <div className="mt-4">
+                      <button
+                        onClick={() => clearAnswer(q._id || "")}
+                        className="bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded font-semibold"
+                      >
+                        Clear Answer
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })()}
 
-          {/* Bottom Prev / Next / Finish */}
+          {/* Bottom Navigation */}
           {selectedExam.questions && selectedExam.questions.length > 0 && (
-            <div className="flex justify-between mt-4">
+            <div className="flex justify-between items-center mt-6 gap-4">
               <button
                 onClick={() =>
-                  scrollToQuestion(Math.max(currentQuestionIndex - 1, 0))
+                  setCurrentQuestionIndex(Math.max(currentQuestionIndex - 1, 0))
                 }
-                className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded"
+                disabled={currentQuestionIndex === 0}
+                className="bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                Previous
+                ← Previous
               </button>
+              
+              <div className="text-center">
+                <div className="text-sm text-gray-600">
+                  Answered: {Object.keys(answers).length} / {selectedExam.questions.length}
+                </div>
+                {Object.keys(flags).filter(k => flags[parseInt(k)]).length > 0 && (
+                  <div className="text-sm text-red-600">
+                    Flagged: {Object.keys(flags).filter(k => flags[parseInt(k)]).length}
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={() =>
-                  scrollToQuestion(
+                  setCurrentQuestionIndex(
                     Math.min(
                       currentQuestionIndex + 1,
                       selectedExam.questions.length - 1
                     )
                   )
                 }
-                className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded"
+                disabled={currentQuestionIndex === selectedExam.questions.length - 1}
+                className="bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                Next
+                Next →
               </button>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          {selectedExam.questions && selectedExam.questions.length > 0 && (
+            <div className="mt-6 text-center">
               <button
                 onClick={finishExam}
                 disabled={submitting}
-                className={`bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded ${
-                  submitting ? "opacity-50 cursor-not-allowed" : ""
+                className={`bg-green-600 hover:bg-green-700 text-white py-3 px-8 rounded-lg font-bold text-lg transition-all ${
+                  submitting ? "opacity-50 cursor-not-allowed" : "shadow-lg hover:shadow-xl"
                 }`}
               >
-                {submitting ? "Submitting..." : "Finish Exam"}
+                {submitting ? "Submitting..." : "🎯 Submit Exam"}
               </button>
+              <p className="text-sm text-gray-500 mt-2">
+                Make sure you've answered all questions before submitting
+              </p>
             </div>
           )}
         </div>

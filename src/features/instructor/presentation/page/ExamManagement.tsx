@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent, FC } from "react";
+import { useState, useEffect, ChangeEvent, FC } from "react";
 import api from "../../../../api/xiosInstance";
 
 interface User {
@@ -50,8 +50,8 @@ interface Exam {
 }
 
 const ExamManagement: FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
+  const [, setUsers] = useState<User[]>([]);
+  const [, setDepartments] = useState<string[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [currentExamId, setCurrentExamId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);

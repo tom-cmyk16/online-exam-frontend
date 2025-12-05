@@ -64,7 +64,9 @@ const QuestionUpload: React.FC<QuestionUploadProps> = ({ onQuestionsExtracted })
       
       if (lines.length === 0) continue;
       
-      const questionText = lines[0];
+      const questionText = lines[0] || "";
+      if (!questionText) continue;
+      
       let type: "text" | "multiple-choice" | "true-false" = "text";
       let options: string[] = [];
       let correctAnswer = "";
@@ -75,7 +77,7 @@ const QuestionUpload: React.FC<QuestionUploadProps> = ({ onQuestionsExtracted })
         type = "true-false";
         // Look for answer indicator
         const answerMatch = block.match(/answer:\s*(true|false)/i);
-        if (answerMatch) {
+        if (answerMatch && answerMatch[1]) {
           correctAnswer = answerMatch[1].charAt(0).toUpperCase() + answerMatch[1].slice(1).toLowerCase();
         }
       } else if (block.match(/[a-d]\)|[a-d]\./i)) {
@@ -87,23 +89,23 @@ const QuestionUpload: React.FC<QuestionUploadProps> = ({ onQuestionsExtracted })
         }
         // Look for answer indicator
         const answerMatch = block.match(/answer:\s*([a-d])/i);
-        if (answerMatch && options.length > 0) {
+        if (answerMatch && answerMatch[1] && options.length > 0) {
           const answerIndex = answerMatch[1].toLowerCase().charCodeAt(0) - 97;
           if (answerIndex >= 0 && answerIndex < options.length) {
-            correctAnswer = options[answerIndex];
+            correctAnswer = options[answerIndex] || "";
           }
         }
       } else {
         // Text question
         const answerMatch = block.match(/answer:\s*(.+?)(?:\n|$)/i);
-        if (answerMatch) {
+        if (answerMatch && answerMatch[1]) {
           correctAnswer = answerMatch[1].trim();
         }
       }
       
       // Look for marks
       const marksMatch = block.match(/marks?:\s*(\d+)/i);
-      if (marksMatch) {
+      if (marksMatch && marksMatch[1]) {
         marks = parseInt(marksMatch[1]);
       }
       

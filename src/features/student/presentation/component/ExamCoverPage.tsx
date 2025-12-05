@@ -19,6 +19,7 @@ interface Exam {
   instructorName?: string;
   timeAllowed?: string;
   examDate?: string;
+  duration?: number;
 }
 
 interface ExamCoverPageProps {

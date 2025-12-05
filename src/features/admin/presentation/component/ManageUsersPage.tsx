@@ -82,8 +82,8 @@ const UserForm: React.FC<{
 
     try {
       // Prepare data for submission - remove empty optional fields
-      const submitData = { ...formData };
-      if (isEditing) {
+      const submitData: any = { ...formData };
+      if (isEditing && submitData.password === "") {
         delete submitData.password; // Don't send password if editing and not changed
       }
 
@@ -188,7 +188,7 @@ const UserForm: React.FC<{
           value={formData.department}
           onChange={handleChange}
           placeholder="Department"
-          required={formData.role !== "admin"}
+          required
           className="p-2 border rounded"
         />
       )}

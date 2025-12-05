@@ -1,5 +1,13 @@
 import React from "react";
-import { Exam } from "../page/ExamManagement";
+
+interface Exam {
+  id: number;
+  title: string;
+  standard: string;
+  assignedYears: string[];
+  questions: any[];
+}
+
 interface Props {
   exams: Exam[];
   setCurrentExamId: React.Dispatch<React.SetStateAction<number | null>>;
