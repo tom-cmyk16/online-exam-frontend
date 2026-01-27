@@ -12,9 +12,9 @@ const Sidebar: React.FC = () => {
 
   const menuItems: Record<string, { path: string; label: string }[]> = {
     admin: [
-      { path: "/main/admin/dashboard", label: "Admin-Dashboard" },
+      { path: "/main/admin/dashboard", label: "Admin Dashboard" },
       { path: "/main/admin/manage-users", label: "Manage Users" },
-      { path: "/main/admin/settings", label: "System-Settings" },
+      { path: "/main/admin/settings", label: "System Settings" },
     ],
     instructor: [
       { path: "/main/instructor/dashboard", label: " instru Dashboard" },
@@ -29,23 +29,21 @@ const Sidebar: React.FC = () => {
     departmentHead: [
       {
         path: "/main/department-head/dashboard",
-        label: "Depart Dashboard",
+        label: "Department Dashboard",
       },
       {
-        path: "/main/department-head/maged -student",
-        label: "Manage student",
+        path: "/main/department-head/manage-students",
+        label: "Manage Students",
       },
-
       {
         path: "/main/department-head/assign-course",
-        label: "Managed cources",
+        label: "Manage Courses",
       },
-      { path: "/main/department-head/student result", label: "student result" },
     ],
     examCommittee: [
       {
         path: "/main/exam-committee/dashboard",
-        label: "examcommita-Dashboard",
+        label: "Exam Review",
       },
     ],
     guest: [{ path: "/login", label: "Login" }],

@@ -26,10 +26,7 @@ import ManageStudentsPage from "./features/departement head/Manage Students Page
 import ManageCourses from "./features/departement head/ManageCourses";
 
 // Exam Committee Pages
-import ExamCommitteeDashboard from "./features/examcommita/ExamCommittee";
 import ExamCommitteeView from "./features/examcommita/ExamCommittee";
-import StudentExamResults from "./features/examcommita/StudentExamResults";
-import SendResultsPage from "./features/examcommita/SendResultsPage";
 
 // Student Pages
 import StudentDashboard from "./features/student/presentation/page/StudentDashboard";
@@ -54,7 +51,7 @@ const DashboardSelector: React.FC = () => {
     case "departmentHead":
       return <DepartmentDashboard />;
     case "examCommittee":
-      return <ExamCommitteeDashboard />;
+      return <ExamCommitteeView />;
     default:
       return (
         <div className="p-6 text-red-600 font-semibold">
@@ -148,7 +145,7 @@ const App: React.FC = () => {
           <Route
             path="instructor/exam-creation"
             element={
-              <ProtectedRoute allowedRoles={["instructor", "departmentHead"]}>
+              <ProtectedRoute allowedRoles={["instructor"]}>
                 <ExamManagement />
               </ProtectedRoute>
             }
@@ -222,7 +219,7 @@ const App: React.FC = () => {
             }
           />
           <Route
-            path="/main/department-head/maged -student"
+            path="department-head/manage-students"
             element={
               <ProtectedRoute allowedRoles={["departmentHead"]}>
                 <ManageStudentsPage />
@@ -244,22 +241,6 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute allowedRoles={["examCommittee"]}>
                 <ExamCommitteeView />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="exam-committee/student-results"
-            element={
-              <ProtectedRoute allowedRoles={["examCommittee"]}>
-                <StudentExamResults />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="exam-committee/send-results"
-            element={
-              <ProtectedRoute allowedRoles={["examCommittee"]}>
-                <SendResultsPage />
               </ProtectedRoute>
             }
           />

@@ -37,7 +37,7 @@ interface Course {
 // ---------- Config ----------
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
 const getToken = () => localStorage.getItem("token") || "";
-const axiosConfig = { headers: { Authorization: `Bearer ${getToken()}` } };
+const getAxiosConfig = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
 
 // ---------- Department Dashboard ----------
 const DepartmentDashboard: React.FC = () => {
@@ -72,7 +72,7 @@ const DepartmentDashboard: React.FC = () => {
       setLoading(true);
       const res = await axios.get<User[]>(
         `${API_BASE}/manageuser`,
-        axiosConfig
+        getAxiosConfig()
       );
       let data = res.data;
       if (currentUserRole === "departmentHead") {
@@ -94,8 +94,8 @@ const DepartmentDashboard: React.FC = () => {
     try {
       setLoading(true);
       const [coursesRes, deptRes] = await Promise.all([
-        axios.get<Course[]>(`${API_BASE}/courses`, axiosConfig),
-        axios.get<{ name: string }[]>(`${API_BASE}/departments`, axiosConfig),
+        axios.get<Course[]>(`${API_BASE}/courses`, getAxiosConfig()),
+        axios.get<{ name: string }[]>(`${API_BASE}/departments`, getAxiosConfig()),
       ]);
 
       let coursesData = coursesRes.data;
@@ -141,7 +141,7 @@ const DepartmentDashboard: React.FC = () => {
           ? courseForm.sections.split(",").map((s) => s.trim())
           : [],
       };
-      const res = await axios[method](url, payload, axiosConfig);
+      const res = await axios[method](url, payload, getAxiosConfig());
 
       if (editingCourseId) {
         setCourses((prev) =>
@@ -182,7 +182,7 @@ const DepartmentDashboard: React.FC = () => {
 
   // ---------- User Status Toggle ----------
   const handleUserStatusToggle = async (id: string, currentStatus: boolean) => {
-    await axios.patch(`${API_BASE}/manageuser/${id}/status`, {}, axiosConfig);
+    await axios.patch(`${API_BASE}/manageuser/${id}/status`, {}, getAxiosConfig());
     setUsers((prev) =>
       prev.map((u) => (u._id === id ? { ...u, isActive: !currentStatus } : u))
     );

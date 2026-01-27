@@ -17,7 +17,7 @@ interface User {
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
 const getToken = () => localStorage.getItem("token") || "";
-const axiosConfig = { headers: { Authorization: `Bearer ${getToken()}` } };
+const getAxiosConfig = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
 
 const ManageStudentsPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -37,7 +37,7 @@ const ManageStudentsPage: React.FC = () => {
       setLoading(true);
       const res = await axios.get<User[]>(
         `${API_BASE}/manageuser`,
-        axiosConfig
+        getAxiosConfig()
       );
       // Only students of the same department
       setUsers(
@@ -62,7 +62,7 @@ const ManageStudentsPage: React.FC = () => {
     const res = await axios.post(
       `${API_BASE}/manageuser`,
       userData,
-      axiosConfig
+      getAxiosConfig()
     );
     setUsers((prev) => [res.data, ...prev]);
   };
@@ -73,7 +73,7 @@ const ManageStudentsPage: React.FC = () => {
     const res = await axios.put(
       `${API_BASE}/manageuser/${editingUserId}`,
       userData,
-      axiosConfig
+      getAxiosConfig()
     );
     setUsers((prev) =>
       prev.map((u) => (u._id === editingUserId ? res.data : u))
@@ -82,7 +82,7 @@ const ManageStudentsPage: React.FC = () => {
   };
 
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
-    await axios.patch(`${API_BASE}/manageuser/${id}/status`, {}, axiosConfig);
+    await axios.patch(`${API_BASE}/manageuser/${id}/status`, {}, getAxiosConfig());
     setUsers((prev) =>
       prev.map((u) => (u._id === id ? { ...u, isActive: !currentStatus } : u))
     );

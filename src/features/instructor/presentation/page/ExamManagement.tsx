@@ -1,4 +1,4 @@
-import { useState, useEffect, ChangeEvent, FC } from "react";
+import { useState, useEffect, FC } from "react";
 import api from "../../../../api/xiosInstance";
 
 interface User {
@@ -50,14 +50,12 @@ interface Exam {
 }
 
 const ExamManagement: FC = () => {
-  const [, setUsers] = useState<User[]>([]);
-  const [, setDepartments] = useState<string[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [currentExamId, setCurrentExamId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [newExamData, setNewExamData] = useState({
-    university: "",
+    university: "Debre Tabor University", // Default university
     title: "",
     description: "",
     instructions: "",
@@ -66,6 +64,9 @@ const ExamManagement: FC = () => {
     activeTime: "",
     weight: "",
     duration: "",
+    year: "",
+    section: "",
+    assignedDepartments: [] as string[],
   });
 
   const [editExamData, setEditExamData] = useState({
@@ -80,6 +81,7 @@ const ExamManagement: FC = () => {
     duration: "",
     year: "",
     section: "",
+    assignedDepartments: [] as string[],
   });
 
   const [newQuestionData, setNewQuestionData] = useState({
@@ -91,9 +93,7 @@ const ExamManagement: FC = () => {
     marks: "",
   });
 
-  const [editingQuestionIndex, setEditingQuestionIndex] = useState<
-    number | null
-  >(null);
+  const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
   const [editQuestionData, setEditQuestionData] = useState({
     text: "",
     type: "text" as "text" | "multiple-choice" | "true-false",
@@ -103,50 +103,49 @@ const ExamManagement: FC = () => {
     marks: "",
   });
 
-  const primaryBtnClass =
-    "bg-green-600 hover:bg-green-700 text-white py-1.5 px-4 text-sm rounded";
+  // Loading and error states
+  const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  // Fetch initial data
+  // Validation states
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+
+  // Fetch current user and exams on component mount
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await api.get<User>("/auth/me", {
+        const res = await api.get("/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setCurrentUser(res.data);
+        console.log("✅ Current user loaded:", res.data.fullName, res.data.department);
       } catch (err) {
-        console.error("Failed to fetch current user", err);
-      }
-    };
-
-    const fetchUsers = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const res = await api.get<User[]>("/manageuser", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUsers(res.data);
-        setDepartments(Array.from(new Set(res.data.map((u) => u.department))));
-      } catch (err) {
-        console.error("Failed to fetch users", err);
+        console.error("Error fetching current user:", err);
+        setError("Failed to load user information. Please login again.");
       }
     };
 
     const fetchExams = async () => {
       try {
         const token = localStorage.getItem("token");
+        console.log("📋 Fetching exams...");
         const res = await api.get<Exam[]>("/exams", {
           headers: { Authorization: `Bearer ${token}` },
         });
+        console.log("✅ Exams loaded:", res.data.length, "exams");
         setExams(res.data);
-      } catch (err) {
-        console.error("Failed to fetch exams", err);
+      } catch (err: any) {
+        console.error("Error fetching exams:", err);
+        setError(err.message || "Failed to load exams. Please check if the server is running.");
+      } finally {
+        setPageLoading(false);
       }
     };
 
     fetchCurrentUser();
-    fetchUsers();
     fetchExams();
   }, []);
 
@@ -166,11 +165,194 @@ const ExamManagement: FC = () => {
         duration: current.duration?.toString() || "",
         year: current.year || "",
         section: current.section || "",
+        assignedDepartments: current.assignedDepartments || [],
       });
-      // No need to set selectedDepartments anymore
-    } else {
-      setEditExamData({
-        university: "",
+    }
+  }, [currentExamId, exams]);
+
+  // Enhanced validation functions
+  const validateExamData = (data: typeof newExamData) => {
+    const errors: {[key: string]: string} = {};
+    
+    if (!data.title.trim()) {
+      errors.title = "Exam title is required";
+    } else if (data.title.length < 3) {
+      errors.title = "Exam title must be at least 3 characters";
+    } else if (data.title.length > 100) {
+      errors.title = "Exam title must be less than 100 characters";
+    }
+    
+    if (!data.university.trim()) {
+      errors.university = "University name is required";
+    }
+    
+    if (data.duration && (parseInt(data.duration) < 10 || parseInt(data.duration) > 300)) {
+      errors.duration = "Duration must be between 10 and 300 minutes";
+    }
+    
+    if (data.weight && (parseInt(data.weight) < 1 || parseInt(data.weight) > 100)) {
+      errors.weight = "Weight must be between 1 and 100 percent";
+    }
+    
+    if (data.startTime && data.endTime) {
+      const start = new Date(data.startTime);
+      const end = new Date(data.endTime);
+      if (start >= end) {
+        errors.endTime = "End time must be after start time";
+      }
+      if (start < new Date()) {
+        errors.startTime = "Start time cannot be in the past";
+      }
+      
+      // Check if duration is reasonable compared to time window
+      const timeDiff = (end.getTime() - start.getTime()) / (1000 * 60); // minutes
+      const examDuration = parseInt(data.duration) || 60;
+      if (timeDiff < examDuration) {
+        errors.duration = "Exam duration cannot be longer than the time window";
+      }
+    }
+    
+    return errors;
+  };
+
+  const validateQuestionData = (data: typeof newQuestionData) => {
+    const errors: {[key: string]: string} = {};
+    
+    if (!data.text.trim()) {
+      errors.text = "Question text is required";
+    } else if (data.text.length < 5) {
+      errors.text = "Question must be at least 5 characters";
+    } else if (data.text.length > 1000) {
+      errors.text = "Question must be less than 1000 characters";
+    }
+    
+    if (!data.correctAnswer.trim()) {
+      errors.correctAnswer = "Correct answer is required";
+    }
+    
+    if (data.type === "multiple-choice") {
+      const validOptions = data.options.filter(opt => opt.trim());
+      if (validOptions.length < 2) {
+        errors.options = "Multiple choice questions need at least 2 options";
+      }
+      if (validOptions.length > 6) {
+        errors.options = "Maximum 6 options allowed for multiple choice questions";
+      }
+      if (!validOptions.includes(data.correctAnswer)) {
+        errors.correctAnswer = "Correct answer must match one of the options";
+      }
+      
+      // Check for duplicate options
+      const uniqueOptions = new Set(validOptions.map(opt => opt.toLowerCase().trim()));
+      if (uniqueOptions.size !== validOptions.length) {
+        errors.options = "Options must be unique";
+      }
+    }
+    
+    if (data.type === "true-false") {
+      if (!["True", "False", "true", "false"].includes(data.correctAnswer)) {
+        errors.correctAnswer = "True/False answer must be 'True' or 'False'";
+      }
+    }
+    
+    if (data.marks && (parseInt(data.marks) < 1 || parseInt(data.marks) > 100)) {
+      errors.marks = "Marks must be between 1 and 100";
+    }
+    
+    if (data.duration && (parseInt(data.duration) < 1 || parseInt(data.duration) > 60)) {
+      errors.duration = "Question duration must be between 1 and 60 minutes";
+    }
+    
+    return errors;
+  };
+
+  // Check edit permissions before allowing modifications
+  const checkEditPermissions = async (examId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.get(`/exams/${examId}/edit-permissions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.data.permissions;
+    } catch (err) {
+      console.error("Error checking edit permissions:", err);
+      return { canEditExam: false, canDeleteExam: false, canEditQuestions: false, reasons: ["Permission check failed"] };
+    }
+  };
+
+  // Validate exam data on server before saving
+  const validateExamOnServer = async (examId: string, examData: any) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.post(`/exams/${examId}/validate-edit`, examData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.data;
+    } catch (err) {
+      console.error("Error validating exam on server:", err);
+      return { isValid: false, errors: ["Server validation failed"], warnings: [] };
+    }
+  };
+
+  const clearMessages = () => {
+    setError(null);
+    setSuccess(null);
+    setValidationErrors({});
+  };
+
+  const showSuccess = (message: string) => {
+    setSuccess(message);
+    setTimeout(() => setSuccess(null), 5000);
+  };
+
+  const showError = (message: string) => {
+    setError(message);
+    setTimeout(() => setError(null), 5000);
+  };
+
+  const handleCreateExam = async () => {
+    clearMessages();
+    
+    // Validate exam data
+    const errors = validateExamData(newExamData);
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      showError("Please fix the validation errors before creating the exam");
+      return;
+    }
+    
+    // Check if user has permission
+    if (!currentUser || !["instructor", "departmentHead", "admin"].includes(currentUser.role)) {
+      showError("You don't have permission to create exams");
+      return;
+    }
+    
+    // Check if user has department (required for exam creation)
+    if (!currentUser.department) {
+      showError("Your account must have a department assigned to create exams");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const examData = {
+        ...newExamData,
+        department: currentUser.department, // Add the user's department
+        duration: newExamData.duration ? parseInt(newExamData.duration) : undefined,
+        weight: newExamData.weight ? parseInt(newExamData.weight) : undefined,
+        assignedDepartments: newExamData.assignedDepartments.length > 0 
+          ? newExamData.assignedDepartments 
+          : [currentUser.department], // Default to user's department if none selected
+      };
+      
+      const res = await api.post<Exam>("/exams", examData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      setExams([...exams, res.data]);
+      setNewExamData({
+        university: "Debre Tabor University", // Keep default university
         title: "",
         description: "",
         instructions: "",
@@ -181,169 +363,232 @@ const ExamManagement: FC = () => {
         duration: "",
         year: "",
         section: "",
-      });
-    }
-  }, [currentExamId, exams]);
-
-  // --- CRUD & other handlers ---
-  const handleCreateExam = async () => {
-    if (!newExamData.title.trim()) return alert("Enter exam title");
-    try {
-      const token = localStorage.getItem("token");
-      const res = await api.post<Exam>(
-        "/exams",
-        {
-          ...newExamData,
-          department: currentUser?.department,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setExams([...exams, res.data]);
-      setNewExamData({
-        university: "",
-        title: "",
-        description: "",
-        instructions: "",
-        startTime: "",
-        endTime: "",
-        activeTime: "",
-        weight: "",
-        duration: "",
+        assignedDepartments: [],
       });
       setCurrentExamId(res.data._id);
-      alert(`Exam created successfully! Exam Code: ${res.data.examCode}`);
-    } catch (err) {
-      alert("Failed to create exam");
-      console.error(err);
+      showSuccess(`Exam created successfully! Exam Code: ${res.data.examCode}`);
+    } catch (err: any) {
+      console.error("Error creating exam:", err);
+      showError(err.response?.data?.message || "Error creating exam");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleUpdateExam = async () => {
-    if (!currentExamId) return alert("Select exam first");
-    if (!editExamData.title.trim()) return alert("Enter exam title");
+    clearMessages();
+    
+    if (!currentExamId) {
+      showError("Please select an exam first");
+      return;
+    }
+    
+    // Check edit permissions first
+    const permissions = await checkEditPermissions(currentExamId);
+    if (!permissions.canEditExam) {
+      showError(permissions.reasons.join(". "));
+      return;
+    }
+    
+    // Validate exam data locally
+    const localErrors = validateExamData(editExamData);
+    if (Object.keys(localErrors).length > 0) {
+      setValidationErrors(localErrors);
+      showError("Please fix the validation errors before updating the exam");
+      return;
+    }
+    
+    // Validate on server
+    const examData = {
+      ...editExamData,
+      duration: editExamData.duration ? parseInt(editExamData.duration) : undefined,
+      weight: editExamData.weight ? parseInt(editExamData.weight) : undefined,
+    };
+    
+    const serverValidation = await validateExamOnServer(currentExamId, examData);
+    if (!serverValidation.isValid) {
+      setValidationErrors(serverValidation.errors.reduce((acc: any, error: string, index: number) => {
+        acc[`server_${index}`] = error;
+        return acc;
+      }, {}));
+      showError("Server validation failed: " + serverValidation.errors.join(", "));
+      return;
+    }
+    
+    // Show warnings if any
+    if (serverValidation.warnings && serverValidation.warnings.length > 0) {
+      const proceedWithWarnings = window.confirm(
+        "Warning:\n" + serverValidation.warnings.join("\n") + "\n\nDo you want to proceed?"
+      );
+      if (!proceedWithWarnings) return;
+    }
+
+    setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await api.put<Exam>(`/exams/${currentExamId}`, editExamData, {
+      
+      const res = await api.put<Exam>(`/exams/${currentExamId}`, examData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setExams(exams.map((e) => (e._id === currentExamId ? res.data : e)));
-      alert("Exam updated successfully!");
-    } catch (err) {
-      alert("Failed to update exam");
-      console.error(err);
+      showSuccess("Exam updated successfully!");
+    } catch (err: any) {
+      console.error("Error updating exam:", err);
+      showError(err.response?.data?.message || "Error updating exam");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDeleteExam = async () => {
-    if (!currentExamId) return alert("Select exam first");
-    if (!window.confirm("Are you sure to delete this exam?")) return;
-    try {
-      const token = localStorage.getItem("token");
-      await api.delete(`/exams/${currentExamId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setExams(exams.filter((e) => e._id !== currentExamId));
-      setCurrentExamId(null);
-      alert("Exam deleted successfully!");
-    } catch (err) {
-      alert("Failed to delete exam");
-      console.error(err);
+    clearMessages();
+    
+    if (!currentExamId) {
+      showError("Please select an exam first");
+      return;
     }
-  };
-
-  const handleSendToExamCommittee = async () => {
-    if (!currentExamId) return alert("Select exam first");
-
-    // Check if all questions have correct answers before sending to committee
+    
+    // Check edit permissions first
+    const permissions = await checkEditPermissions(currentExamId);
+    if (!permissions.canDeleteExam) {
+      showError(permissions.reasons.join(". "));
+      return;
+    }
+    
     const currentExam = exams.find((e) => e._id === currentExamId);
-    if (!currentExam) return alert("Exam not found");
-
-    const questionsWithoutAnswers = currentExam.questions.filter(
-      (q) => !q.correctAnswer || q.correctAnswer.trim() === ""
-    );
-    if (questionsWithoutAnswers.length > 0) {
-      alert(
-        `Please provide correct answers for all questions before sending to committee. ${questionsWithoutAnswers.length} question(s) are missing correct answers.`
-      );
+    
+    // Enhanced confirmation dialog with different messages for approved vs non-approved exams
+    let confirmMessage;
+    let requiredInput;
+    
+    if (currentExam?.isApproved) {
+      // Special handling for approved exams
+      confirmMessage = [
+        `⚠️  WARNING: You are about to delete an APPROVED exam!`,
+        ``,
+        `📋 Exam: "${currentExam.title}"`,
+        `🔢 Code: ${currentExam.examCode}`,
+        `📊 Questions: ${currentExam.questions?.length || 0}`,
+        `🏫 Department: ${currentExam.department}`,
+        currentExam.year && currentExam.section ? `📚 Year/Section: ${currentExam.year}/${currentExam.section}` : "",
+        ``,
+        `🚨 CRITICAL IMPACT:`,
+        `• This exam is currently AVAILABLE TO STUDENTS`,
+        `• Students will LOSE ACCESS immediately after deletion`,
+        `• All exam data will be PERMANENTLY DELETED`,
+        `• This action CANNOT BE UNDONE`,
+        ``,
+        `⚠️  Only proceed if you are absolutely certain!`,
+        ``,
+        `Type "DELETE APPROVED EXAM" to confirm:`
+      ].filter(Boolean).join("\n");
+      requiredInput = "DELETE APPROVED EXAM";
+    } else {
+      // Regular confirmation for non-approved exams
+      confirmMessage = [
+        `Are you sure you want to delete "${currentExam?.title}"?`,
+        ``,
+        `📊 Exam Details:`,
+        `• Questions: ${currentExam?.questions?.length || 0}`,
+        `• Exam Code: ${currentExam?.examCode}`,
+        `• Department: ${currentExam?.department}`,
+        currentExam?.year && currentExam?.section ? `• Year/Section: ${currentExam.year}/${currentExam.section}` : "",
+        ``,
+        `⚠️  This action cannot be undone.`,
+        `⚠️  All questions and exam data will be permanently deleted.`,
+        ``,
+        `Type "DELETE" to confirm:`
+      ].filter(Boolean).join("\n");
+      requiredInput = "DELETE";
+    }
+    
+    const userInput = window.prompt(confirmMessage);
+    if (userInput !== requiredInput) {
+      showError(`Deletion cancelled. You must type '${requiredInput}' to confirm.`);
       return;
     }
 
+    setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await api.post(
-        `/exams/${currentExamId}/send-to-committee`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setExams(exams.map((e) => (e._id === currentExamId ? res.data : e)));
-      alert("Exam sent to committee!");
-    } catch (err) {
-      alert("Failed to send exam");
-      console.error(err);
+      const response = await api.delete(`/exams/${currentExamId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      setExams(exams.filter((e) => e._id !== currentExamId));
+      setCurrentExamId(null);
+      
+      // Show detailed success message
+      const deletedInfo = response.data.deletedExam;
+      const successMessage = deletedInfo?.wasApproved 
+        ? `✅ Approved exam "${deletedInfo?.title}" (Code: ${deletedInfo?.examCode}) deleted successfully!\n🚨 Students no longer have access to this exam.`
+        : `✅ Exam "${deletedInfo?.title}" (Code: ${deletedInfo?.examCode}) deleted successfully!`;
+      
+      showSuccess(successMessage);
+    } catch (err: any) {
+      console.error("Error deleting exam:", err);
+      showError(err.response?.data?.message || "Error deleting exam");
+    } finally {
+      setLoading(false);
     }
   };
-
-  const handleQuestionChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
-    idx?: number
-  ) => {
-    const { name, value } = e.target;
-    if (name === "options" && typeof idx === "number") {
-      const opts = [...newQuestionData.options];
-      opts[idx] = value;
-      setNewQuestionData({ ...newQuestionData, options: opts });
-    } else {
-      setNewQuestionData({ ...newQuestionData, [name]: value });
-    }
-  };
-
-  const addOption = () =>
-    setNewQuestionData({
-      ...newQuestionData,
-      options: [...newQuestionData.options, ""],
-    });
-
-  const removeOption = (idx: number) =>
-    setNewQuestionData({
-      ...newQuestionData,
-      options: newQuestionData.options.filter((_, i) => i !== idx),
-    });
 
   const handleAddQuestion = async () => {
-    if (!currentExamId) return alert("Select exam first");
-    if (!newQuestionData.text.trim()) return alert("Question cannot be empty");
-    if (
-      newQuestionData.type === "multiple-choice" &&
-      newQuestionData.options.filter((o) => o.trim() !== "").length < 2
-    )
-      return alert("MCQs must have at least 2 options");
-    if (
-      newQuestionData.type === "true-false" &&
-      !newQuestionData.correctAnswer.trim()
-    )
-      return alert("Please select True or False for the correct answer");
+    clearMessages();
+    
+    if (!currentExamId) {
+      showError("Please select an exam first");
+      return;
+    }
+    
+    // Validate question data
+    const errors = validateQuestionData(newQuestionData);
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      showError("Please fix the validation errors before adding the question");
+      return;
+    }
+    
+    const currentExam = exams.find((e) => e._id === currentExamId);
+    
+    // Check if exam can be modified
+    if (currentExam?.isApproved) {
+      showError("Cannot add questions to approved exams");
+      return;
+    }
+    
+    // Check ownership
+    if (currentExam?.createdBy._id !== currentUser?._id && currentUser?.role !== "admin") {
+      showError("You can only add questions to exams that you created");
+      return;
+    }
+    
+    // Check question limit
+    if (currentExam && currentExam.questions && currentExam.questions.length >= 50) {
+      showError("Maximum 50 questions allowed per exam");
+      return;
+    }
 
+    setLoading(true);
     try {
       const token = localStorage.getItem("token");
+      const questionData = {
+        text: newQuestionData.text.trim(),
+        type: newQuestionData.type,
+        options: newQuestionData.type === "multiple-choice" 
+          ? newQuestionData.options.filter(opt => opt.trim()).map(opt => opt.trim())
+          : undefined,
+        correctAnswer: newQuestionData.correctAnswer.trim(),
+        duration: newQuestionData.duration ? parseInt(newQuestionData.duration) : undefined,
+        marks: newQuestionData.marks ? parseInt(newQuestionData.marks) : 1,
+      };
+      
       const res = await api.post<Exam>(
         `/exams/${currentExamId}/questions`,
-        {
-          text: newQuestionData.text,
-          type: newQuestionData.type,
-          options:
-            newQuestionData.type === "multiple-choice"
-              ? newQuestionData.options.filter((o) => o.trim() !== "")
-              : newQuestionData.type === "true-false"
-              ? ["True", "False"]
-              : [],
-          correctAnswer: newQuestionData.correctAnswer,
-          duration: newQuestionData.duration
-            ? parseInt(newQuestionData.duration)
-            : undefined,
-          marks: newQuestionData.marks ? parseInt(newQuestionData.marks) : 0,
-        },
+        questionData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
       setExams(exams.map((e) => (e._id === currentExamId ? res.data : e)));
       setNewQuestionData({
         text: "",
@@ -353,70 +598,77 @@ const ExamManagement: FC = () => {
         duration: "",
         marks: "",
       });
-      alert("Question added!");
-    } catch (err) {
-      alert("Failed to add question");
-      console.error(err);
+      showSuccess("Question added successfully!");
+    } catch (err: any) {
+      console.error("Error adding question:", err);
+      showError(err.response?.data?.message || "Error adding question");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleEditQuestion = (index: number) => {
-    const question = exams.find((e) => e._id === currentExamId)?.questions[
-      index
-    ];
-    if (question) {
-      setEditingQuestionIndex(index);
-      setEditQuestionData({
-        text: question.text || "",
-        type: question.type || "text",
-        options: question.options || [""],
-        correctAnswer: question.correctAnswer || "",
-        duration: question.duration?.toString() || "",
-        marks: question.marks?.toString() || "",
-      });
-    }
+    const currentExam = exams.find((e) => e._id === currentExamId);
+    if (!currentExam) return;
+    
+    const question = currentExam.questions[index];
+    if (!question) return;
+    
+    setEditingQuestionIndex(index);
+    setEditQuestionData({
+      text: question.text,
+      type: question.type,
+      options: question.options || [""],
+      correctAnswer: question.correctAnswer,
+      duration: question.duration?.toString() || "",
+      marks: question.marks?.toString() || "",
+    });
   };
 
   const handleUpdateQuestion = async () => {
-    if (!currentExamId || editingQuestionIndex === null)
-      return alert("Select question to edit");
-    if (!editQuestionData.text.trim()) return alert("Question cannot be empty");
-    if (
-      editQuestionData.type === "multiple-choice" &&
-      editQuestionData.options.filter((o) => o.trim() !== "").length < 2
-    )
-      return alert("MCQs must have at least 2 options");
-    if (
-      editQuestionData.type === "true-false" &&
-      !editQuestionData.correctAnswer.trim()
-    )
-      return alert("Please select True or False for the correct answer");
+    clearMessages();
+    
+    if (!currentExamId || editingQuestionIndex === null) {
+      showError("Please select a question to edit");
+      return;
+    }
+    
+    // Validate question data
+    const errors = validateQuestionData(editQuestionData);
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      showError("Please fix the validation errors before updating the question");
+      return;
+    }
 
+    setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const current = exams.find((e) => e._id === currentExamId);
-      const qId = current?.questions[editingQuestionIndex]?._id;
-      if (!qId) return alert("Invalid question selected");
+      const currentExam = exams.find((e) => e._id === currentExamId);
+      const questionId = currentExam?.questions[editingQuestionIndex]?._id;
+      
+      if (!questionId) {
+        showError("Invalid question selected");
+        return;
+      }
+
+      const questionData = {
+        text: editQuestionData.text.trim(),
+        type: editQuestionData.type,
+        options: editQuestionData.type === "multiple-choice" 
+          ? editQuestionData.options.filter(opt => opt.trim()).map(opt => opt.trim())
+          : undefined,
+        correctAnswer: editQuestionData.correctAnswer.trim(),
+        duration: editQuestionData.duration ? parseInt(editQuestionData.duration) : undefined,
+        marks: editQuestionData.marks ? parseInt(editQuestionData.marks) : 1,
+      };
 
       const res = await api.put<Exam>(
-        `/exams/${currentExamId}/questions/${qId}`,
-        {
-          text: editQuestionData.text,
-          type: editQuestionData.type,
-          options:
-            editQuestionData.type === "multiple-choice"
-              ? editQuestionData.options.filter((o) => o.trim() !== "")
-              : editQuestionData.type === "true-false"
-              ? ["True", "False"]
-              : [],
-          correctAnswer: editQuestionData.correctAnswer,
-          duration: editQuestionData.duration
-            ? parseInt(editQuestionData.duration)
-            : undefined,
-          marks: editQuestionData.marks ? parseInt(editQuestionData.marks) : 0,
-        },
+        `/exams/${currentExamId}/questions/${questionId}`,
+        questionData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
       setExams(exams.map((e) => (e._id === currentExamId ? res.data : e)));
       setEditingQuestionIndex(null);
       setEditQuestionData({
@@ -427,83 +679,114 @@ const ExamManagement: FC = () => {
         duration: "",
         marks: "",
       });
-      alert("Question updated!");
-    } catch (err) {
-      alert("Failed to update question");
-      console.error(err);
+      showSuccess("Question updated successfully!");
+    } catch (err: any) {
+      console.error("Error updating question:", err);
+      showError(err.response?.data?.message || "Error updating question");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDeleteQuestion = async (index: number) => {
-    if (!currentExamId) return alert("Select exam first");
-    if (!window.confirm("Are you sure to delete this question?")) return;
-    try {
-      const token = localStorage.getItem("token");
-      const current = exams.find((e) => e._id === currentExamId);
-      const qId = current?.questions[index]?._id;
-      if (!qId) return alert("Invalid question selected");
-
-      const res = await api.delete<Exam>(
-        `/exams/${currentExamId}/questions/${qId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setExams(exams.map((e) => (e._id === currentExamId ? res.data : e)));
-      alert("Question deleted!");
-    } catch (err) {
-      alert("Failed to delete question");
-      console.error(err);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingQuestionIndex(null);
-    setEditQuestionData({
-      text: "",
-      type: "text",
-      options: [""],
-      correctAnswer: "",
-      duration: "",
-      marks: "",
-    });
-  };
-
-  const handleAssignDepartments = async () => {
-    if (!currentExamId) return alert("Select exam first");
-    if (!editExamData.year.trim()) return alert("Please enter a year");
-    if (!editExamData.section.trim()) return alert("Please enter a section");
-
-    // Check if all questions have correct answers
-    const currentExam = exams.find((e) => e._id === currentExamId);
-    if (!currentExam) return alert("Exam not found");
-
-    const questionsWithoutAnswers = currentExam.questions.filter(
-      (q) => !q.correctAnswer || q.correctAnswer.trim() === ""
-    );
-    if (questionsWithoutAnswers.length > 0) {
-      alert(
-        `Please provide correct answers for all questions before assigning. ${questionsWithoutAnswers.length} question(s) are missing correct answers.`
-      );
+    clearMessages();
+    
+    if (!currentExamId) {
+      showError("Please select an exam first");
       return;
     }
 
+    const currentExam = exams.find((e) => e._id === currentExamId);
+    if (!currentExam) return;
+    
+    const question = currentExam.questions[index];
+    if (!question) return;
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete this question?\n\n"${question.text}"\n\nThis action cannot be undone.`
+    );
+    if (!confirmDelete) return;
+
+    setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await api.put<Exam>(
-        `/exams/${currentExamId}/assign-departments`,
-        {
-          assignedDepartments: [currentUser?.department], // Only assign to own department
-          year: editExamData.year,
-          section: editExamData.section,
-        },
+      const questionId = question._id;
+      
+      if (!questionId) {
+        showError("Invalid question selected");
+        return;
+      }
+
+      const res = await api.delete<Exam>(
+        `/exams/${currentExamId}/questions/${questionId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
       setExams(exams.map((e) => (e._id === currentExamId ? res.data : e)));
-      alert("Assigned successfully to your department!");
-      // Automatically send to exam committee after assignment
-      await handleSendToExamCommittee();
-    } catch (err) {
-      alert("Failed to assign");
-      console.error(err);
+      showSuccess("Question deleted successfully!");
+    } catch (err: any) {
+      console.error("Error deleting question:", err);
+      showError(err.response?.data?.message || "Error deleting question");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendToCommittee = async () => {
+    clearMessages();
+    
+    if (!currentExamId) {
+      showError("Please select an exam first");
+      return;
+    }
+
+    const currentExam = exams.find((e) => e._id === currentExamId);
+    if (!currentExam) return;
+
+    // Validation checks before sending to committee
+    if (currentExam.questions.length === 0) {
+      showError("Cannot send exam to committee: No questions added. Please add at least 1 question.");
+      return;
+    }
+
+    // Check if all questions have correct answers
+    const questionsWithoutAnswers = currentExam.questions.filter(
+      q => !q.correctAnswer || q.correctAnswer.trim() === ""
+    );
+    
+    if (questionsWithoutAnswers.length > 0) {
+      showError(`Cannot send to committee: ${questionsWithoutAnswers.length} question(s) missing correct answers`);
+      return;
+    }
+
+    const confirmSend = window.confirm(
+      `Send "${currentExam.title}" to Exam Committee?\n\n` +
+      `Questions: ${currentExam.questions.length}\n` +
+      `Department: ${currentExam.department}\n\n` +
+      `Once sent, you cannot modify the exam until committee review is complete.\n` +
+      `The committee will review, approve, and assign students.`
+    );
+    
+    if (!confirmSend) return;
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      
+      // Send to committee
+      const res = await api.post(
+        `/exams/${currentExamId}/send-to-committee`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setExams(exams.map((e) => (e._id === currentExamId ? res.data : e)));
+      showSuccess("Exam sent to committee successfully! The committee will review and approve.");
+    } catch (err: any) {
+      console.error("Error sending to committee:", err);
+      showError(err.response?.data?.message || "Error sending exam to committee");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -511,477 +794,695 @@ const ExamManagement: FC = () => {
     (exam) => exam.department === currentUser?.department
   );
 
+  const primaryBtnClass = "bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded";
+
+  // Show loading state while fetching data
+  if (pageLoading) {
+    return (
+      <div className="min-h-screen p-6 bg-gray-100 max-w-5xl mx-auto">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading exam management...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen p-6 bg-gray-100 max-w-5xl mx-auto">
-      {/* Create Exam Form */}
+      {/* Error and Success Messages */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="text-red-600 mr-2">❌</div>
+              <p className="text-red-800 font-medium">{error}</p>
+            </div>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="text-red-600 hover:text-red-800 text-sm underline"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <div className="text-green-600 mr-2">✅</div>
+            <p className="text-green-800 font-medium">{success}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Create New Exam */}
       <div className="bg-white p-6 rounded shadow mb-6">
-        <h2 className="text-2xl font-semibold mb-4 text-green-700">
-          Create Exam
-        </h2>
-        <input
-          type="text"
-          placeholder="University"
-          value={newExamData.university}
-          onChange={(e) =>
-            setNewExamData({ ...newExamData, university: e.target.value })
-          }
-          className="w-full mb-2 p-2 border rounded"
-        />
-        <input
-          type="text"
-          placeholder="Exam Title"
-          value={newExamData.title}
-          onChange={(e) =>
-            setNewExamData({ ...newExamData, title: e.target.value })
-          }
-          className="w-full mb-2 p-2 border rounded"
-        />
-        <textarea
-          placeholder="Description"
-          value={newExamData.description}
-          onChange={(e) =>
-            setNewExamData({ ...newExamData, description: e.target.value })
-          }
-          className="w-full mb-2 p-2 border rounded"
-        />
-        <textarea
-          placeholder="Instructions"
-          value={newExamData.instructions}
-          onChange={(e) =>
-            setNewExamData({ ...newExamData, instructions: e.target.value })
-          }
-          className="w-full mb-2 p-2 border rounded"
-        />
-        <input
-          type="number"
-          placeholder="Weight / Total Marks"
-          value={newExamData.weight}
-          onChange={(e) =>
-            setNewExamData({ ...newExamData, weight: e.target.value })
-          }
-          className="w-full mb-2 p-2 border rounded"
-        />
-        <input
-          type="number"
-          placeholder="Duration (minutes)"
-          value={newExamData.duration}
-          onChange={(e) =>
-            setNewExamData({ ...newExamData, duration: e.target.value })
-          }
-          className="w-full mb-2 p-2 border rounded"
-        />
-        <div className="flex gap-2 mb-2">
-          <input
-            type="datetime-local"
-            value={newExamData.startTime}
-            onChange={(e) =>
-              setNewExamData({ ...newExamData, startTime: e.target.value })
-            }
-            className="flex-1 p-2 border rounded"
-          />
-          <input
-            type="datetime-local"
-            value={newExamData.endTime}
-            onChange={(e) =>
-              setNewExamData({ ...newExamData, endTime: e.target.value })
-            }
-            className="flex-1 p-2 border rounded"
-          />
+        <h2 className="text-2xl font-semibold mb-4 text-green-700">Create New Exam</h2>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <input
+              type="text"
+              placeholder="University *"
+              value={newExamData.university}
+              onChange={(e) => setNewExamData({ ...newExamData, university: e.target.value })}
+              className={`p-2 border rounded w-full ${validationErrors.university ? 'border-red-500' : ''}`}
+            />
+            {validationErrors.university && (
+              <p className="text-red-500 text-xs mt-1">{validationErrors.university}</p>
+            )}
+          </div>
+          <div>
+            <input
+              type="text"
+              placeholder="Exam Title *"
+              value={newExamData.title}
+              onChange={(e) => setNewExamData({ ...newExamData, title: e.target.value })}
+              className={`p-2 border rounded w-full ${validationErrors.title ? 'border-red-500' : ''}`}
+            />
+            {validationErrors.title && (
+              <p className="text-red-500 text-xs mt-1">{validationErrors.title}</p>
+            )}
+          </div>
+          <div>
+            <textarea
+              placeholder="Description"
+              value={newExamData.description}
+              onChange={(e) => setNewExamData({ ...newExamData, description: e.target.value })}
+              className="p-2 border rounded w-full"
+              rows={2}
+            />
+          </div>
+          <div>
+            <textarea
+              placeholder="Instructions"
+              value={newExamData.instructions}
+              onChange={(e) => setNewExamData({ ...newExamData, instructions: e.target.value })}
+              className="p-2 border rounded w-full"
+              rows={2}
+            />
+          </div>
+          <div>
+            <input
+              type="number"
+              placeholder="Duration (minutes)"
+              value={newExamData.duration}
+              onChange={(e) => setNewExamData({ ...newExamData, duration: e.target.value })}
+              className={`p-2 border rounded w-full ${validationErrors.duration ? 'border-red-500' : ''}`}
+              min="10"
+              max="300"
+            />
+            {validationErrors.duration && (
+              <p className="text-red-500 text-xs mt-1">{validationErrors.duration}</p>
+            )}
+          </div>
+          <div>
+            <input
+              type="number"
+              placeholder="Weight (%)"
+              value={newExamData.weight}
+              onChange={(e) => setNewExamData({ ...newExamData, weight: e.target.value })}
+              className={`p-2 border rounded w-full ${validationErrors.weight ? 'border-red-500' : ''}`}
+              min="1"
+              max="100"
+            />
+            {validationErrors.weight && (
+              <p className="text-red-500 text-xs mt-1">{validationErrors.weight}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">Start Time</label>
+            <input
+              type="datetime-local"
+              value={newExamData.startTime}
+              onChange={(e) => setNewExamData({ ...newExamData, startTime: e.target.value })}
+              className={`p-2 border rounded w-full ${validationErrors.startTime ? 'border-red-500' : ''}`}
+            />
+            {validationErrors.startTime && (
+              <p className="text-red-500 text-xs mt-1">{validationErrors.startTime}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">End Time</label>
+            <input
+              type="datetime-local"
+              value={newExamData.endTime}
+              onChange={(e) => setNewExamData({ ...newExamData, endTime: e.target.value })}
+              className={`p-2 border rounded w-full ${validationErrors.endTime ? 'border-red-500' : ''}`}
+            />
+            {validationErrors.endTime && (
+              <p className="text-red-500 text-xs mt-1">{validationErrors.endTime}</p>
+            )}
+          </div>
         </div>
 
-        <button onClick={handleCreateExam} className={primaryBtnClass}>
-          Create Exam
-        </button>
+        {/* Assigned Department Info */}
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <h3 className="font-semibold text-blue-800 mb-3">📚 Department Assignment</h3>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm text-gray-700">This exam will be assigned to:</span>
+            <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
+              {currentUser?.department || "Your Department"}
+            </span>
+          </div>
+          <p className="text-xs text-gray-500">
+            Exams are automatically assigned to your department. Students in your department will see this exam after committee approval.
+          </p>
+          
+          {/* Year and Section for New Exam */}
+          <div className="grid grid-cols-2 gap-4 mt-3">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Year (optional)</label>
+              <input
+                type="text"
+                placeholder="e.g., 1, 2, 3, 4"
+                value={newExamData.year}
+                onChange={(e) => setNewExamData({ ...newExamData, year: e.target.value })}
+                className="p-2 border rounded w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Section (optional)</label>
+              <input
+                type="text"
+                placeholder="e.g., A, B, C"
+                value={newExamData.section}
+                onChange={(e) => setNewExamData({ ...newExamData, section: e.target.value })}
+                className="p-2 border rounded w-full"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-4">
+          <button 
+            onClick={handleCreateExam} 
+            disabled={loading}
+            className={`${primaryBtnClass} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {loading ? "Creating..." : "Create Exam"}
+          </button>
+          {currentExamId && (
+            <button 
+              onClick={handleSendToCommittee} 
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded disabled:opacity-50"
+            >
+              {loading ? "Sending..." : "📤 Assign to Exam Committee"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Edit Exam + Questions */}
       {currentExamId && (
         <div className="bg-white p-6 rounded shadow mb-6">
-          <h2 className="text-2xl font-semibold mb-4 text-green-700">
-            Edit Exam
-          </h2>
-          {/* --- inputs similar to create form --- */}
-          <input
-            type="text"
-            placeholder="Exam Title"
-            value={editExamData.title}
-            onChange={(e) =>
-              setEditExamData({ ...editExamData, title: e.target.value })
-            }
-            className="w-full mb-2 p-2 border rounded"
-          />
-          <input
-            type="text"
-            placeholder="Year"
-            value={editExamData.year}
-            onChange={(e) =>
-              setEditExamData({ ...editExamData, year: e.target.value })
-            }
-            className="w-full mb-2 p-2 border rounded"
-          />
-          <input
-            type="text"
-            placeholder="Section"
-            value={editExamData.section}
-            onChange={(e) =>
-              setEditExamData({ ...editExamData, section: e.target.value })
-            }
-            className="w-full mb-2 p-2 border rounded"
-          />
-          <input
-            type="number"
-            placeholder="Duration (minutes)"
-            value={editExamData.duration}
-            onChange={(e) =>
-              setEditExamData({ ...editExamData, duration: e.target.value })
-            }
-            className="w-full mb-2 p-2 border rounded"
-          />
-          <div className="flex gap-2 mb-2">
-            <input
-              type="datetime-local"
-              value={editExamData.startTime}
-              onChange={(e) =>
-                setEditExamData({ ...editExamData, startTime: e.target.value })
-              }
-              className="flex-1 p-2 border rounded"
-            />
-            <input
-              type="datetime-local"
-              value={editExamData.endTime}
-              onChange={(e) =>
-                setEditExamData({ ...editExamData, endTime: e.target.value })
-              }
-              className="flex-1 p-2 border rounded"
-            />
-          </div>
-
-          {/* Assign to Own Department with Year and Section */}
-          <div className="mb-2">
-            <label className="font-semibold">
-              Assign to Department: {currentUser?.department}
-            </label>
-            <p className="text-sm text-gray-600">
-              Students will be assigned based on year and section.
-            </p>
-          </div>
-
-          <div className="flex gap-2 mb-2">
-            <button onClick={handleUpdateExam} className={primaryBtnClass}>
-              Update Exam
-            </button>
-            <button
-              onClick={handleDeleteExam}
-              className="bg-red-600 hover:bg-red-700 text-white py-1.5 px-4 rounded"
-            >
-              Delete Exam
-            </button>
-
-            {currentExamId && (
+          {(() => {
+            const currentExam = exams.find((e) => e._id === currentExamId);
+            const isApproved = currentExam?.isApproved;
+            const isRejected = currentExam?.isRejected;
+            const isPending = !isApproved && !isRejected;
+            
+            return (
               <>
-                <button
-                  onClick={handleAssignDepartments}
-                  className={primaryBtnClass}
-                  disabled={
-                    exams
-                      .find((e) => e._id === currentExamId)
-                      ?.questions.some(
-                        (q) => !q.correctAnswer || q.correctAnswer.trim() === ""
-                      ) ?? false
-                  }
-                >
-                  Assign to Department
-                </button>
-                <button
-                  onClick={handleSendToExamCommittee}
-                  className={primaryBtnClass}
-                  disabled={
-                    !editExamData.year.trim() ||
-                    !editExamData.section.trim() ||
-                    exams.find((e) => e._id === currentExamId)?.isApproved ||
-                    exams.find((e) => e._id === currentExamId)?.isRejected ||
-                    (exams
-                      .find((e) => e._id === currentExamId)
-                      ?.questions.some(
-                        (q) => !q.correctAnswer || q.correctAnswer.trim() === ""
-                      ) ??
-                      false)
-                  }
-                >
-                  Send to Committee
-                </button>
-              </>
-            )}
-          </div>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-semibold text-green-700">
+                    {isApproved ? "✅ Approved Exam - View Only" : 
+                     isRejected ? "❌ Rejected Exam - Edit & Resubmit" : 
+                     "📝 Edit Exam"}
+                  </h2>
+                  <div className="flex gap-2">
+                    {isPending && currentExam && currentExam.questions.length >= 1 && (
+                      <button
+                        onClick={handleSendToCommittee}
+                        disabled={loading}
+                        className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded disabled:opacity-50"
+                      >
+                        {loading ? "Sending..." : "📤 Send to Committee"}
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-          {/* --- Add Question --- */}
-          <div className="mt-4">
-            <h3 className="font-semibold text-green-700 mb-2">Add Question</h3>
-            <textarea
-              placeholder="Question Text"
-              value={newQuestionData.text}
-              name="text"
-              onChange={handleQuestionChange}
-              className="w-full mb-2 p-2 border rounded"
-            />
-            <select
-              name="type"
-              value={newQuestionData.type}
-              onChange={handleQuestionChange}
-              className="w-full mb-2 p-2 border rounded"
-            >
-              <option value="text">Text</option>
-              <option value="multiple-choice">Multiple Choice</option>
-              <option value="true-false">True/False</option>
-            </select>
-            {newQuestionData.type === "multiple-choice" && (
-              <div>
-                {newQuestionData.options.map((opt, idx) => (
-                  <div key={idx} className="flex gap-2 mb-1">
+                {isApproved && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <p className="text-green-800 font-medium">
+                      This exam has been approved by the committee and is now available to students.
+                    </p>
+                    <p className="text-green-700 text-sm mt-1">
+                      You cannot modify approved exams, but you can still delete them if necessary.
+                    </p>
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                      <p className="text-yellow-800 text-sm font-medium">
+                        ⚠️ Warning: Deleting an approved exam will immediately remove student access.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {isRejected && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                    <p className="text-red-800 font-medium">
+                      This exam was rejected by the committee.
+                    </p>
+                    <p className="text-red-700 text-sm mt-1">
+                      Please review and edit the exam, then resubmit to the committee.
+                    </p>
+                  </div>
+                )}
+
+                {/* Exam Details Form */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
                     <input
                       type="text"
-                      value={opt}
-                      name="options"
-                      onChange={(e) => handleQuestionChange(e, idx)}
-                      className="flex-1 p-2 border rounded"
+                      placeholder="Exam Title *"
+                      value={editExamData.title}
+                      onChange={(e) => setEditExamData({ ...editExamData, title: e.target.value })}
+                      className={`p-2 border rounded w-full ${validationErrors.title ? 'border-red-500' : ''}`}
+                      disabled={isApproved}
                     />
-                    <button
-                      onClick={() => removeOption(idx)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-2 rounded"
+                    {validationErrors.title && (
+                      <p className="text-red-500 text-xs mt-1">{validationErrors.title}</p>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Year (e.g., 2024) *"
+                      value={editExamData.year}
+                      onChange={(e) => setEditExamData({ ...editExamData, year: e.target.value })}
+                      className="p-2 border rounded w-full"
+                      disabled={isApproved}
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Section (e.g., A, B, C) *"
+                      value={editExamData.section}
+                      onChange={(e) => setEditExamData({ ...editExamData, section: e.target.value })}
+                      className="p-2 border rounded w-full"
+                      disabled={isApproved}
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Duration (minutes)"
+                      value={editExamData.duration}
+                      onChange={(e) => setEditExamData({ ...editExamData, duration: e.target.value })}
+                      className={`p-2 border rounded w-full ${validationErrors.duration ? 'border-red-500' : ''}`}
+                      disabled={isApproved}
+                      min="10"
+                      max="300"
+                    />
+                    {validationErrors.duration && (
+                      <p className="text-red-500 text-xs mt-1">{validationErrors.duration}</p>
+                    )}
+                  </div>
+                </div>
+
+                {!isApproved && (
+                  <div className="flex gap-2 mb-4">
+                    <button 
+                      onClick={handleUpdateExam} 
+                      disabled={loading}
+                      className={`${primaryBtnClass} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      X
+                      {loading ? "Updating..." : "Update Exam"}
+                    </button>
+                    <button
+                      onClick={handleDeleteExam}
+                      disabled={loading}
+                      className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded disabled:opacity-50"
+                    >
+                      {loading ? "Deleting..." : "Delete Exam"}
                     </button>
                   </div>
-                ))}
-                <button onClick={addOption} className={primaryBtnClass}>
-                  Add Option
-                </button>
-              </div>
-            )}
-            {newQuestionData.type === "true-false" && (
-              <div>
-                <label className="block mb-2 font-medium">
-                  Correct Answer:
-                </label>
-                <select
-                  name="correctAnswer"
-                  value={newQuestionData.correctAnswer}
-                  onChange={handleQuestionChange}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="">Select True or False</option>
-                  <option value="True">True</option>
-                  <option value="False">False</option>
-                </select>
-              </div>
-            )}
-            {newQuestionData.type !== "true-false" && (
-              <input
-                type="text"
-                placeholder="Correct Answer"
-                value={newQuestionData.correctAnswer}
-                name="correctAnswer"
-                onChange={handleQuestionChange}
-                className="w-full mb-2 p-2 border rounded"
-              />
-            )}
+                )}
 
-            <input
-              type="number"
-              placeholder="Marks"
-              value={newQuestionData.marks}
-              name="marks"
-              onChange={handleQuestionChange}
-              className="w-full mb-2 p-2 border rounded"
-            />
-            <button onClick={handleAddQuestion} className={primaryBtnClass}>
-              Add Question
-            </button>
-          </div>
+                {/* Exam Statistics */}
+                {currentExam && (
+                  <div className="bg-gray-50 p-4 rounded mb-4">
+                    <div className="grid grid-cols-4 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-blue-600">{currentExam.questions.length}</div>
+                        <div className="text-xs text-gray-600">Questions</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-green-600">
+                          {currentExam.questions.reduce((sum, q) => sum + (q.marks || 1), 0)}
+                        </div>
+                        <div className="text-xs text-gray-600">Total Marks</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-purple-600">{editExamData.duration || 0}</div>
+                        <div className="text-xs text-gray-600">Minutes</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-orange-600">{currentExam.examCode}</div>
+                        <div className="text-xs text-gray-600">Exam Code</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-          {/* --- Edit Question --- */}
-          {editingQuestionIndex !== null && (
-            <div className="mt-4 border-t pt-4">
-              <h3 className="font-semibold text-green-700 mb-2">
-                Edit Question
+                {/* Department Info Section */}
+                {currentExam && !isApproved && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <h3 className="font-semibold text-blue-800 mb-3">📚 Department Assignment</h3>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-sm text-gray-700">Assigned to:</span>
+                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
+                        {currentExam.department || currentUser?.department || "Your Department"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      This exam is assigned to your department. Students in this department will see it after committee approval.
+                    </p>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+
+          {/* Add Question Section */}
+          {!exams.find((e) => e._id === currentExamId)?.isApproved && (
+            <div className="mt-6 border-t pt-6">
+              <h3 className="font-semibold text-green-700 mb-4">
+                {editingQuestionIndex !== null ? "Edit Question" : "Add Question"}
               </h3>
-              <textarea
-                placeholder="Question Text"
-                value={editQuestionData.text}
-                name="text"
-                onChange={(e) =>
-                  setEditQuestionData({
-                    ...editQuestionData,
-                    text: e.target.value,
-                  })
-                }
-                className="w-full mb-2 p-2 border rounded"
-              />
-              <select
-                name="type"
-                value={editQuestionData.type}
-                onChange={(e) =>
-                  setEditQuestionData({
-                    ...editQuestionData,
-                    type: e.target.value as any,
-                  })
-                }
-                className="w-full mb-2 p-2 border rounded"
-              >
-                <option value="text">Text</option>
-                <option value="multiple-choice">Multiple Choice</option>
-                <option value="true-false">True/False</option>
-              </select>
-              {editQuestionData.type === "multiple-choice" && (
+              
+              <div className="space-y-4">
                 <div>
-                  {editQuestionData.options.map((opt, idx) => (
-                    <div key={idx} className="flex gap-2 mb-1">
-                      <input
-                        type="text"
-                        value={opt}
-                        onChange={(e) => {
-                          const opts = [...editQuestionData.options];
-                          opts[idx] = e.target.value;
-                          setEditQuestionData({
-                            ...editQuestionData,
-                            options: opts,
-                          });
-                        }}
-                        className="flex-1 p-2 border rounded"
-                      />
+                  <textarea
+                    placeholder="Question Text *"
+                    value={editingQuestionIndex !== null ? editQuestionData.text : newQuestionData.text}
+                    onChange={(e) => {
+                      if (editingQuestionIndex !== null) {
+                        setEditQuestionData({ ...editQuestionData, text: e.target.value });
+                      } else {
+                        setNewQuestionData({ ...newQuestionData, text: e.target.value });
+                      }
+                    }}
+                    className={`w-full p-2 border rounded ${validationErrors.text ? 'border-red-500' : ''}`}
+                    rows={3}
+                  />
+                  {validationErrors.text && (
+                    <p className="text-red-500 text-xs mt-1">{validationErrors.text}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <select
+                      value={editingQuestionIndex !== null ? editQuestionData.type : newQuestionData.type}
+                      onChange={(e) => {
+                        const newType = e.target.value as "text" | "multiple-choice" | "true-false";
+                        if (editingQuestionIndex !== null) {
+                          setEditQuestionData({ ...editQuestionData, type: newType });
+                        } else {
+                          setNewQuestionData({ ...newQuestionData, type: newType });
+                        }
+                      }}
+                      className="w-full p-2 border rounded"
+                    >
+                      <option value="text">Text Answer</option>
+                      <option value="multiple-choice">Multiple Choice</option>
+                      <option value="true-false">True/False</option>
+                    </select>
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Marks *"
+                      value={editingQuestionIndex !== null ? editQuestionData.marks : newQuestionData.marks}
+                      onChange={(e) => {
+                        if (editingQuestionIndex !== null) {
+                          setEditQuestionData({ ...editQuestionData, marks: e.target.value });
+                        } else {
+                          setNewQuestionData({ ...newQuestionData, marks: e.target.value });
+                        }
+                      }}
+                      className={`w-full p-2 border rounded ${validationErrors.marks ? 'border-red-500' : ''}`}
+                      min="1"
+                      max="100"
+                    />
+                    {validationErrors.marks && (
+                      <p className="text-red-500 text-xs mt-1">{validationErrors.marks}</p>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Duration (optional)"
+                      value={editingQuestionIndex !== null ? editQuestionData.duration : newQuestionData.duration}
+                      onChange={(e) => {
+                        if (editingQuestionIndex !== null) {
+                          setEditQuestionData({ ...editQuestionData, duration: e.target.value });
+                        } else {
+                          setNewQuestionData({ ...newQuestionData, duration: e.target.value });
+                        }
+                      }}
+                      className="w-full p-2 border rounded"
+                    />
+                  </div>
+                </div>
+
+                {/* Multiple Choice Options */}
+                {((editingQuestionIndex !== null ? editQuestionData.type : newQuestionData.type) === "multiple-choice") && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Options:</label>
+                    {(editingQuestionIndex !== null ? editQuestionData.options : newQuestionData.options).map((option, idx) => (
+                      <div key={idx} className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          placeholder={`Option ${idx + 1} *`}
+                          value={option}
+                          onChange={(e) => {
+                            if (editingQuestionIndex !== null) {
+                              const opts = [...editQuestionData.options];
+                              opts[idx] = e.target.value;
+                              setEditQuestionData({ ...editQuestionData, options: opts });
+                            } else {
+                              const opts = [...newQuestionData.options];
+                              opts[idx] = e.target.value;
+                              setNewQuestionData({ ...newQuestionData, options: opts });
+                            }
+                          }}
+                          className="flex-1 p-2 border rounded"
+                        />
+                        {(editingQuestionIndex !== null ? editQuestionData.options : newQuestionData.options).length > 2 && (
+                          <button
+                            onClick={() => {
+                              if (editingQuestionIndex !== null) {
+                                const opts = editQuestionData.options.filter((_, i) => i !== idx);
+                                setEditQuestionData({ ...editQuestionData, options: opts });
+                              } else {
+                                const opts = newQuestionData.options.filter((_, i) => i !== idx);
+                                setNewQuestionData({ ...newQuestionData, options: opts });
+                              }
+                            }}
+                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => {
+                        if (editingQuestionIndex !== null) {
+                          setEditQuestionData({ ...editQuestionData, options: [...editQuestionData.options, ""] });
+                        } else {
+                          setNewQuestionData({ ...newQuestionData, options: [...newQuestionData.options, ""] });
+                        }
+                      }}
+                      className="text-blue-600 text-sm hover:text-blue-800"
+                    >
+                      + Add Option
+                    </button>
+                    {validationErrors.options && (
+                      <p className="text-red-500 text-xs mt-1">{validationErrors.options}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Correct Answer */}
+                <div>
+                  {((editingQuestionIndex !== null ? editQuestionData.type : newQuestionData.type) === "true-false") ? (
+                    <select
+                      value={editingQuestionIndex !== null ? editQuestionData.correctAnswer : newQuestionData.correctAnswer}
+                      onChange={(e) => {
+                        if (editingQuestionIndex !== null) {
+                          setEditQuestionData({ ...editQuestionData, correctAnswer: e.target.value });
+                        } else {
+                          setNewQuestionData({ ...newQuestionData, correctAnswer: e.target.value });
+                        }
+                      }}
+                      className={`w-full p-2 border rounded ${validationErrors.correctAnswer ? 'border-red-500' : ''}`}
+                    >
+                      <option value="">Select Correct Answer *</option>
+                      <option value="True">True</option>
+                      <option value="False">False</option>
+                    </select>
+                  ) : ((editingQuestionIndex !== null ? editQuestionData.type : newQuestionData.type) === "multiple-choice") ? (
+                    <select
+                      value={editingQuestionIndex !== null ? editQuestionData.correctAnswer : newQuestionData.correctAnswer}
+                      onChange={(e) => {
+                        if (editingQuestionIndex !== null) {
+                          setEditQuestionData({ ...editQuestionData, correctAnswer: e.target.value });
+                        } else {
+                          setNewQuestionData({ ...newQuestionData, correctAnswer: e.target.value });
+                        }
+                      }}
+                      className={`w-full p-2 border rounded ${validationErrors.correctAnswer ? 'border-red-500' : ''}`}
+                    >
+                      <option value="">Select Correct Answer *</option>
+                      {(editingQuestionIndex !== null ? editQuestionData.options : newQuestionData.options)
+                        .filter(opt => opt.trim())
+                        .map((option, idx) => (
+                          <option key={idx} value={option}>{option}</option>
+                        ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="Correct Answer *"
+                      value={editingQuestionIndex !== null ? editQuestionData.correctAnswer : newQuestionData.correctAnswer}
+                      onChange={(e) => {
+                        if (editingQuestionIndex !== null) {
+                          setEditQuestionData({ ...editQuestionData, correctAnswer: e.target.value });
+                        } else {
+                          setNewQuestionData({ ...newQuestionData, correctAnswer: e.target.value });
+                        }
+                      }}
+                      className={`w-full p-2 border rounded ${validationErrors.correctAnswer ? 'border-red-500' : ''}`}
+                    />
+                  )}
+                  {validationErrors.correctAnswer && (
+                    <p className="text-red-500 text-xs mt-1">{validationErrors.correctAnswer}</p>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  {editingQuestionIndex !== null ? (
+                    <>
+                      <button 
+                        onClick={handleUpdateQuestion} 
+                        disabled={loading}
+                        className={`${primaryBtnClass} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {loading ? "Updating..." : "Update Question"}
+                      </button>
                       <button
                         onClick={() => {
-                          const opts = editQuestionData.options.filter(
-                            (_, i) => i !== idx
-                          );
+                          setEditingQuestionIndex(null);
                           setEditQuestionData({
-                            ...editQuestionData,
-                            options: opts,
+                            text: "",
+                            type: "text",
+                            options: [""],
+                            correctAnswer: "",
+                            duration: "",
+                            marks: "",
                           });
+                          clearMessages();
                         }}
-                        className="bg-red-600 hover:bg-red-700 text-white px-2 rounded"
+                        className="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded"
                       >
-                        X
+                        Cancel
                       </button>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() =>
-                      setEditQuestionData({
-                        ...editQuestionData,
-                        options: [...editQuestionData.options, ""],
-                      })
-                    }
-                    className={primaryBtnClass}
-                  >
-                    Add Option
-                  </button>
+                    </>
+                  ) : (
+                    <button 
+                      onClick={handleAddQuestion} 
+                      disabled={loading}
+                      className={`${primaryBtnClass} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {loading ? "Adding..." : "Add Question"}
+                    </button>
+                  )}
                 </div>
-              )}
-              {editQuestionData.type === "true-false" && (
-                <div>
-                  <label className="block mb-2 font-medium">
-                    Correct Answer:
-                  </label>
-                  <select
-                    value={editQuestionData.correctAnswer}
-                    onChange={(e) =>
-                      setEditQuestionData({
-                        ...editQuestionData,
-                        correctAnswer: e.target.value,
-                      })
-                    }
-                    className="w-full p-2 border rounded"
-                  >
-                    <option value="">Select True or False</option>
-                    <option value="True">True</option>
-                    <option value="False">False</option>
-                  </select>
-                </div>
-              )}
-              {editQuestionData.type !== "true-false" && (
-                <input
-                  type="text"
-                  placeholder="Correct Answer"
-                  value={editQuestionData.correctAnswer}
-                  onChange={(e) =>
-                    setEditQuestionData({
-                      ...editQuestionData,
-                      correctAnswer: e.target.value,
-                    })
-                  }
-                  className="w-full mb-2 p-2 border rounded"
-                />
-              )}
-
-              <input
-                type="number"
-                placeholder="Marks"
-                value={editQuestionData.marks}
-                onChange={(e) =>
-                  setEditQuestionData({
-                    ...editQuestionData,
-                    marks: e.target.value,
-                  })
-                }
-                className="w-full mb-2 p-2 border rounded"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={handleUpdateQuestion}
-                  className={primaryBtnClass}
-                >
-                  Update Question
-                </button>
-                <button
-                  onClick={handleCancelEdit}
-                  className="bg-gray-600 hover:bg-gray-700 text-white py-1.5 px-4 rounded"
-                >
-                  Cancel
-                </button>
               </div>
             </div>
           )}
 
-          {/* --- List Questions --- */}
-          <div className="mt-4">
-            <h3 className="font-semibold text-green-700 mb-2">Questions</h3>
-            <ul>
-              {exams
-                .find((e) => e._id === currentExamId)
-                ?.questions.map((q, idx) => (
-                  <li
-                    key={idx}
-                    className="border p-2 mb-2 rounded flex justify-between items-center"
-                  >
-                    <div>
-                      <div className="font-medium">{q.text}</div>
-                      <div className="text-sm text-gray-500">
-                        Type: {q.type}, Marks: {q.marks || 0}
+          {/* List Questions */}
+          <div className="mt-6 border-t pt-6">
+            <h3 className="font-semibold text-green-700 mb-4">
+              Questions ({exams.find((e) => e._id === currentExamId)?.questions.length || 0})
+            </h3>
+            
+            {(!exams.find((e) => e._id === currentExamId)?.questions.length) ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No questions added yet.</p>
+                <p className="text-sm mt-1">Add at least 3 questions to send the exam to committee.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {exams
+                  .find((e) => e._id === currentExamId)
+                  ?.questions.map((q, idx) => (
+                    <div
+                      key={idx}
+                      className="border p-4 rounded-lg bg-gray-50"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="font-medium mb-2">
+                            {idx + 1}. {q.text}
+                          </div>
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <p><strong>Type:</strong> {q.type} | <strong>Marks:</strong> {q.marks || 1}</p>
+                            {q.options && (
+                              <div>
+                                <strong>Options:</strong>
+                                <ul className="list-disc list-inside ml-4">
+                                  {q.options.map((opt, optIdx) => (
+                                    <li key={optIdx} className={opt === q.correctAnswer ? "text-green-600 font-medium" : ""}>
+                                      {opt} {opt === q.correctAnswer && "✓"}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {!q.options && (
+                              <p><strong>Correct Answer:</strong> <span className="text-green-600">{q.correctAnswer}</span></p>
+                            )}
+                          </div>
+                        </div>
+                        {!exams.find((e) => e._id === currentExamId)?.isApproved && (
+                          <div className="flex gap-2 ml-4">
+                            <button
+                              onClick={() => handleEditQuestion(idx)}
+                              disabled={loading}
+                              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteQuestion(idx)}
+                              disabled={loading}
+                              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditQuestion(idx)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-sm"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteQuestion(idx)}
-                        className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-sm"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </li>
-                ))}
-            </ul>
+                  ))}
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* --- List of Exams --- */}
+      {/* List of Exams */}
       <div className="bg-white p-6 rounded shadow">
         <h2 className="text-2xl font-semibold mb-4 text-green-700">
           Your Exams
@@ -1008,31 +1509,45 @@ const ExamManagement: FC = () => {
                     Questions: {exam.questions.length} | Exam Code:{" "}
                     {exam.examCode}
                   </div>
-                  <div className="text-sm text-gray-500">
-                    Start:{" "}
-                    {exam.startTime
-                      ? new Date(exam.startTime).toLocaleString()
-                      : "Not set"}{" "}
-                    | End:{" "}
-                    {exam.endTime
-                      ? new Date(exam.endTime).toLocaleString()
-                      : "Not set"}
-                  </div>
+                  {exam.year && exam.section && (
+                    <div className="text-sm text-blue-600">
+                      📚 Year: {exam.year} | Section: {exam.section}
+                    </div>
+                  )}
+                  {exam.assignedDepartments && exam.assignedDepartments.length > 0 && (
+                    <div className="text-sm text-purple-600 mt-1">
+                      🏫 Assigned to: {exam.assignedDepartments.join(", ")}
+                    </div>
+                  )}
                 </div>
-                <div>
+                <div className="text-right">
                   {exam.isApproved && (
-                    <span className="text-green-600 font-semibold">
-                      ✅ Approved
+                    <span className="text-green-600 font-semibold block mb-1">
+                      ✅ Approved - Available to Students
                     </span>
                   )}
                   {!exam.isApproved && !exam.isRejected && (
-                    <span className="text-yellow-600 font-semibold">
-                      ⏳ Pending
-                    </span>
+                    <>
+                      <span className="text-yellow-600 font-semibold block mb-1">
+                        ⏳ Pending Committee Approval
+                      </span>
+                      {exam.questions.length >= 1 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentExamId(exam._id);
+                            setTimeout(() => handleSendToCommittee(), 100);
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs py-1 px-3 rounded mt-1"
+                        >
+                          📤 Send to Committee
+                        </button>
+                      )}
+                    </>
                   )}
                   {exam.isRejected && (
-                    <span className="text-red-600 font-semibold">
-                      ❌ Rejected
+                    <span className="text-red-600 font-semibold block mb-1">
+                      ❌ Rejected by Committee
                     </span>
                   )}
                 </div>

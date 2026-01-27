@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { useSearchParams } from "react-router-dom";
+import api from "../../../../api/xiosInstance";
 
 type Role =
   | "student"
@@ -21,14 +22,18 @@ interface User {
   isActive: boolean;
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
-
 const getAuthConfig = () => ({
   headers: {
     Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
     "Content-Type": "application/json",
   },
 });
+
+// Get current user from localStorage
+const getCurrentUser = () => {
+  const userStr = localStorage.getItem("user");
+  return userStr ? JSON.parse(userStr) : null;
+};
 
 // ---------------- UserForm ----------------
 const UserForm: React.FC<{
@@ -37,13 +42,16 @@ const UserForm: React.FC<{
   isEditing?: boolean;
   onCancel?: () => void;
 }> = ({ onSubmit, initialData, isEditing = false, onCancel }) => {
+  const currentUser = getCurrentUser();
+  const isDepartmentHead = currentUser?.role === "departmentHead";
+  
   const [formData, setFormData] = useState({
     fullName: "",
     username: "",
     email: "",
     password: "",
     role: "student" as Role,
-    department: "",
+    department: isDepartmentHead ? currentUser.department : "",
     year: "",
     programType: "regular",
     section: "",
@@ -51,6 +59,7 @@ const UserForm: React.FC<{
   });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialData) {
@@ -68,6 +77,7 @@ const UserForm: React.FC<{
     const { name, value } = e.target;
     setFormData((p) => ({ ...p, [name]: value }));
     setFormError(null); // Clear error when user makes changes
+    setFormSuccess(null); // Clear success when user makes changes
   };
 
   const handleCheckbox = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,6 +89,7 @@ const UserForm: React.FC<{
     e.preventDefault();
     setSubmitting(true);
     setFormError(null);
+    setFormSuccess(null);
 
     try {
       // Prepare data for submission - remove empty optional fields
@@ -88,6 +99,10 @@ const UserForm: React.FC<{
       }
 
       await onSubmit(submitData);
+      
+      // Show success message
+      setFormSuccess(isEditing ? "User updated successfully!" : "User created successfully!");
+      
       // Reset form after successful submission if not editing
       if (!isEditing) {
         setFormData({
@@ -103,6 +118,9 @@ const UserForm: React.FC<{
           isActive: true,
         });
       }
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setFormSuccess(null), 3000);
     } catch (err: any) {
       console.error("Form submission error:", err);
       if (err.response?.status === 500) {
@@ -127,6 +145,12 @@ const UserForm: React.FC<{
       {formError && (
         <div className="md:col-span-3 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           {formError}
+        </div>
+      )}
+      
+      {formSuccess && (
+        <div className="md:col-span-3 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+          ✅ {formSuccess}
         </div>
       )}
 
@@ -177,7 +201,6 @@ const UserForm: React.FC<{
       >
         <option value="student">Student</option>
         <option value="instructor">Instructor</option>
-        <option value="admin">Admin</option>
         <option value="departmentHead">Department Head</option>
         <option value="examCommittee">Exam Committee</option>
       </select>
@@ -189,7 +212,10 @@ const UserForm: React.FC<{
           onChange={handleChange}
           placeholder="Department"
           required
-          className="p-2 border rounded"
+          readOnly={isDepartmentHead}
+          disabled={isDepartmentHead}
+          className={`p-2 border rounded ${isDepartmentHead ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+          title={isDepartmentHead ? `Fixed to your department: ${currentUser.department}` : ''}
         />
       )}
 
@@ -272,16 +298,28 @@ const ManageUsersPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
   const usersPerPage = 6;
+
+  // Apply URL parameters as filters when component loads
+  useEffect(() => {
+    const roleParam = searchParams.get('role');
+    const statusParam = searchParams.get('status');
+    
+    if (roleParam && ['student', 'instructor', 'admin', 'departmentHead', 'examCommittee'].includes(roleParam)) {
+      setRoleFilter(roleParam);
+    }
+    
+    if (statusParam && ['active', 'inactive'].includes(statusParam)) {
+      setStatusFilter(statusParam);
+    }
+  }, [searchParams]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get<User[]>(
-        `${API_BASE}/manageuser`,
-        getAuthConfig()
-      );
+      const res = await api.get<User[]>("/manageuser", getAuthConfig());
       setUsers(res.data);
     } catch (err: any) {
       console.error("Fetch users error:", err);
@@ -297,15 +335,26 @@ const ManageUsersPage: React.FC = () => {
 
   const handleAddUser = async (userData: any) => {
     try {
-      const res = await axios.post(
-        `${API_BASE}/manageuser`,
-        userData,
-        getAuthConfig()
-      );
-      setUsers((p) => [res.data, ...p]);
+      console.log("📤 Sending user data:", userData);
+      const res = await api.post("/manageuser", userData, getAuthConfig());
+      console.log("📥 Received response:", res.data);
+      
+      // Handle both response formats: direct user object or wrapped in response
+      const newUser = res.data.user || res.data;
+      console.log("✅ Adding new user to list:", newUser);
+      
+      setUsers((prevUsers) => {
+        const updated = [newUser, ...prevUsers];
+        console.log("📊 Total users after add:", updated.length);
+        return updated;
+      });
       setError(null);
+      
+      // Optionally refresh the list to ensure sync
+      await fetchUsers();
     } catch (err: any) {
-      console.error("Add user error:", err);
+      console.error("❌ Add user error:", err);
+      console.error("Error response:", err.response?.data);
       throw err; // Re-throw to be handled in UserForm
     }
   };
@@ -313,11 +362,7 @@ const ManageUsersPage: React.FC = () => {
   const handleUpdateUser = async (userData: any) => {
     if (!editingUserId) return;
     try {
-      const res = await axios.put(
-        `${API_BASE}/manageuser/${editingUserId}`,
-        userData,
-        getAuthConfig()
-      );
+      const res = await api.put(`/manageuser/${editingUserId}`, userData, getAuthConfig());
       setUsers((p) => p.map((u) => (u._id === editingUserId ? res.data : u)));
       setEditingUserId(null);
       setError(null);
@@ -329,11 +374,7 @@ const ManageUsersPage: React.FC = () => {
 
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
     try {
-      await axios.patch(
-        `${API_BASE}/manageuser/${id}/status`,
-        {},
-        getAuthConfig()
-      );
+      await api.patch(`/manageuser/${id}/status`, {}, getAuthConfig());
       setUsers((p) =>
         p.map((u) => (u._id === id ? { ...u, isActive: !currentStatus } : u))
       );
@@ -372,9 +413,32 @@ const ManageUsersPage: React.FC = () => {
 
   if (loading) return <div className="text-center py-10">Loading users...</div>;
 
+  const currentUser = getCurrentUser();
+  const isDepartmentHead = currentUser?.role === "departmentHead";
+
   return (
     <div className="max-w-7xl mx-auto mt-8 p-6 bg-white rounded shadow">
       <h2 className="text-2xl font-bold text-green-700 mb-4">Manage Users</h2>
+
+      {/* Show filter info if coming from dashboard */}
+      {(searchParams.get('role') || searchParams.get('status')) && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded">
+          <p className="text-green-800">
+            🎯 <strong>Filtered View:</strong> 
+            {searchParams.get('role') && ` Showing ${searchParams.get('role')}s`}
+            {searchParams.get('status') && ` Showing ${searchParams.get('status')} users`}
+            {' '}from dashboard
+          </p>
+        </div>
+      )}
+
+      {isDepartmentHead && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+          <p className="text-blue-800">
+            📌 <strong>Department Head View:</strong> You can only view and manage users in your department: <strong>{currentUser.department}</strong>
+          </p>
+        </div>
+      )}
 
       <UserForm onSubmit={handleAddUser} />
 
