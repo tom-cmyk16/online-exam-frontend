@@ -28,9 +28,14 @@
       ]
     }
   },
+<<<<<<< HEAD
   "include": [
     "src",
     "src/core/component/.tsx",
     "context"
   ]
 }
+=======
+  "include": ["src", "src/core/component/.tsx", "context"]
+}
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42

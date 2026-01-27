@@ -1,4 +1,5 @@
 import axios from "axios";
+<<<<<<< HEAD
 
 // Use proxy in development, full URL in production
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
@@ -66,3 +67,12 @@ api.interceptors.response.use(
 );
 
 export default api;
+=======
+const api = axios.create({
+  baseURL: "http://localhost:5000/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+export default api;
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42

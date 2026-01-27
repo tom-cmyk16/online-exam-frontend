@@ -4,6 +4,7 @@ import { LogOut, X } from "lucide-react";
 
 interface LogoutFormProps {
   username?: string;
+<<<<<<< HEAD
   onConfirm?: () => void; // Called when logout is confirmed
   onCancel?: () => void; // Called when modal is closed without logout
 }
@@ -23,6 +24,22 @@ const LogoutForm: React.FC<LogoutFormProps> = ({ username, onConfirm, onCancel }
       // Redirect to login page
       navigate("/login");
     }
+=======
+  onCancel?: () => void; // Called when modal is closed without logout
+}
+
+const LogoutForm: React.FC<LogoutFormProps> = ({ username, onCancel }) => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // Clear localStorage immediately
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("username");
+
+    // Redirect to login page
+    navigate("/login");
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
   };
 
   return (

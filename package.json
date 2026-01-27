@@ -16,6 +16,7 @@
     "@heroicons/react": "^2.2.0",
     "@tailwindcss/vite": "^4.1.11",
     "axios": "^1.10.0",
+<<<<<<< HEAD
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
@@ -35,13 +36,33 @@
     "react-toastify": "^11.0.5",
     "vite-tsconfig-paths": "^5.1.4",
     "xlsx": "^0.18.5",
+=======
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "dayjs": "^1.11.13",
+    "express": "^5.1.0",
+    "firebase": "^11.10.0",
+    "lucide-react": "^0.525.0",
+    "mammoth": "^1.10.0",
+    "mongoose": "^8.17.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.7.1",
+    "react-toastify": "^11.0.5",
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
     "zustand": "^5.0.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
     "@types/node": "^24.0.13",
+<<<<<<< HEAD
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
+=======
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
     "@types/tailwindcss": "^3.0.11",
     "@vitejs/plugin-react": "^4.5.2",
     "autoprefixer": "^10.4.21",

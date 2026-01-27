@@ -1,6 +1,7 @@
 // src/core/component/Role.ts
 import { create } from "zustand";
 
+<<<<<<< HEAD
 // Add new roles to UserRole type
 export type UserRole =
   | "admin"
@@ -10,6 +11,9 @@ export type UserRole =
   | "departmentHead"
   | "examCommittee"
   | "";
+=======
+export type UserRole = "admin" | "instructor" | "student" | "guest" | "";
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
 
 interface RoleProps {
   role: UserRole;
@@ -17,7 +21,10 @@ interface RoleProps {
   clear: () => void;
 }
 
+<<<<<<< HEAD
 // Get role from localStorage if available
+=======
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
 const storedRole =
   typeof window !== "undefined"
     ? (localStorage.getItem("role") as UserRole | null)

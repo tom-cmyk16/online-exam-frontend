@@ -1,6 +1,72 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
+<<<<<<< HEAD
+=======
+
+// Core Layout & Components
+import MainLayout from "./core/MainLayout";
+import RoleStand from "./core/component/Role";
+
+// Auth
+import LoginPage from "./features/authentication/presentation/pages/LoginPage";
+
+// Admin Pages
+import AdminDashboard from "./features/admin/presentation/component/AdminDashboard";
+import ManageUsersPage from "./features/admin/presentation/component/ManageUsersPage";
+import ManageDepartmentPage from "./features/admin/presentation/component/ManageDepartmentPage";
+import AssignInstructorPage from "./features/admin/presentation/component/AssignCourseToInstructor";
+
+// Instructor Pages
+import InstructorDashboardPage from "./features/instructor/presentation/page/InstructorDashboardPage";
+import ExamManagement from "./features/instructor/presentation/page/ExamManagement";
+import AssignedInstructorsList from "./features/instructor/presentation/component/AssignedInstructorsList";
+
+// Student Pages
+import StudentDashboard from "./features/student/presentation/page/StudentDashboard";
+import StudentAssignedCourses from "./features/student/presentation/page/StudentAssignedCourses";
+import StudentExamResult from "./features/student/presentation/page/StudentExamResult";
+import StudentTakeExam from "./features/student/presentation/page/StudentTakeExam";
+import ScheduleExamPage from "./features/instructor/presentation/component/ScheduleExamForm";
+
+// --------------------
+// Dashboard Selector
+// --------------------
+const DashboardSelector: React.FC = () => {
+  const role = RoleStand((state) => state.role);
+
+  if (role === "admin") return <AdminDashboard />;
+  if (role === "instructor") return <InstructorDashboardPage />;
+  if (role === "student") return <StudentDashboard />;
+  return (
+    <div className="p-6 text-red-600 font-semibold">
+      ❌ Invalid Role or Not Logged In
+    </div>
+  );
+};
+
+// --------------------
+// ProtectedRoute
+// --------------------
+interface ProtectedRouteProps {
+  allowedRoles: ("admin" | "instructor" | "student")[];
+  children: React.ReactNode;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  allowedRoles,
+  children,
+}) => {
+  const role = RoleStand((state) => state.role);
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+  if (!token || !role || !allowedRoles.includes(role))
+    return <Navigate to="/login" replace />;
+
+  return <>{children}</>;
+};
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
 
 // Core Layout & Components
 import MainLayout from "./core/MainLayout";
@@ -125,17 +191,36 @@ const App: React.FC = () => {
             }
           />
           <Route
+<<<<<<< HEAD
             path="admin/settings"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
                 <SystemSettingsPage />
+=======
+            path="admin/manage-departments"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <ManageDepartmentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="admin/assign-course"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AssignInstructorPage />
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
               </ProtectedRoute>
             }
           />
 
           {/* Instructor routes */}
           <Route
+<<<<<<< HEAD
             path="instructor/dashboard"
+=======
+            path="/main/instructor/dashboard"
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
             element={
               <ProtectedRoute allowedRoles={["instructor"]}>
                 <InstructorDashboardPage />
@@ -166,6 +251,7 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+<<<<<<< HEAD
           <Route
             path="instructor/student-results"
             element={
@@ -174,6 +260,8 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+=======
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
 
           {/* Student routes */}
           <Route
@@ -185,7 +273,11 @@ const App: React.FC = () => {
             }
           />
           <Route
+<<<<<<< HEAD
             path="student/take-exam/:examId"
+=======
+            path="student/take-exam"
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
             element={
               <ProtectedRoute allowedRoles={["student"]}>
                 <StudentTakeExam />
@@ -193,6 +285,17 @@ const App: React.FC = () => {
             }
           />
           <Route
+<<<<<<< HEAD
+=======
+            path="student/assigned-courses"
+            element={
+              <ProtectedRoute allowedRoles={["student"]}>
+                <StudentAssignedCourses />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
             path="student/exam-result/:examId"
             element={
               <ProtectedRoute allowedRoles={["student"]}>
@@ -200,6 +303,7 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+<<<<<<< HEAD
 
           {/* Department Head routes */}
           <Route
@@ -244,6 +348,8 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+=======
+>>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
         </Route>
 
         {/* Catch all */}
