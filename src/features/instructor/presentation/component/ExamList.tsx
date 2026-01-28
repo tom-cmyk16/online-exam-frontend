@@ -1,5 +1,4 @@
 import React from "react";
-<<<<<<< HEAD
 
 interface Exam {
   id: number;
@@ -9,9 +8,6 @@ interface Exam {
   questions: any[];
 }
 
-=======
-import { Exam } from "../page/ExamManagement";
->>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
 interface Props {
   exams: Exam[];
   setCurrentExamId: React.Dispatch<React.SetStateAction<number | null>>;

@@ -12,21 +12,25 @@ const Sidebar: React.FC = () => {
 
   const menuItems: Record<string, { path: string; label: string }[]> = {
     admin: [
-<<<<<<< HEAD
       { path: "/main/admin/dashboard", label: "Admin Dashboard" },
       { path: "/main/admin/manage-users", label: "Manage Users" },
       { path: "/main/admin/settings", label: "System Settings" },
     ],
     instructor: [
-      { path: "/main/instructor/dashboard", label: " instru Dashboard" },
+      { path: "/main/instructor/dashboard", label: "Dashboard" },
       {
         path: "/main/instructor/assigned-pages",
-        label: "Assigned Courses view",
+        label: "Assigned Courses",
       },
       { path: "/main/instructor/exam-creation", label: "Exam Management" },
+      { path: "/main/instructor/schedule-exam", label: "Schedule Exam" },
       { path: "/main/instructor/student-results", label: "Student Results" },
     ],
-    student: [{ path: "/main", label: "Dashboard" }],
+    student: [
+      { path: "/main/student/dashboard", label: "Dashboard" },
+      { path: "/main/student/take-exam", label: "Take Exam" },
+      { path: "/main/student/assigned-courses", label: "My Courses" },
+    ],
     departmentHead: [
       {
         path: "/main/department-head/dashboard",
@@ -46,25 +50,6 @@ const Sidebar: React.FC = () => {
         path: "/main/exam-committee/dashboard",
         label: "Exam Review",
       },
-=======
-      { path: "/main/admin/dashboard", label: "Admain-Dashboard" },
-      { path: "/main/admin/manage-users", label: "Manage-Users" },
-      { path: "/main/admin/manage-departments", label: "M-Departments" },
-      { path: "/main/admin/assign-course", label: "Courses-instructor" },
-      { path: "/main/admin/view-results", label: "Student-Results" },
-    ],
-    instructor: [
-      { path: "/main/instructor/dashboard", label: "Dashboard" },
-      { path: "/main/instructor/assigned-pages", label: "Assigned Courses" },
-      { path: "/main/instructor/exam-creation", label: "Exam Management" },
-      { path: "/main/instructor/schedule-exam", label: "Schedule Exam" },
-      { path: "/main/instructor/grade-exam", label: "Student Results" },
-    ],
-    student: [
-      { path: "/main/student/dashboard", label: "Dashboard" },
-      { path: "/main/student/take-exam", label: "Take-Exam" },
-      { path: "/main/student/exam-result/:examId", label: "View Results" },
->>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
     ],
     guest: [{ path: "/login", label: "Login" }],
   };
@@ -72,11 +57,7 @@ const Sidebar: React.FC = () => {
   return (
     <aside
       className={`h-screen bg-green-50 border-r border-green-300 p-2 shadow-md overflow-y-auto transition-all duration-300 ${
-<<<<<<< HEAD
-        collapsed ? "w-10" : "w-45"
-=======
         collapsed ? "w-10" : "w-52"
->>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
       }`}
     >
       <button
@@ -91,21 +72,14 @@ const Sidebar: React.FC = () => {
           <li key={item.path}>
             <Link
               to={item.path}
-<<<<<<< HEAD
-              className={`flex items-center gap-2 text-base font-medium rounded px-3 py-2 transition-colors duration-200 ${
-                location.pathname.startsWith(item.path)
-=======
               className={`flex items-center gap-2 text-base font-medium rounded px-3 py-2 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
                 location.pathname
                   .toLowerCase()
                   .startsWith(item.path.toLowerCase())
->>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
                   ? "bg-green-600 text-white"
                   : "text-green-800 hover:bg-green-600 hover:text-white"
               }`}
             >
-<<<<<<< HEAD
-=======
               <span
                 className={`w-5 h-5 rounded-full ${
                   location.pathname
@@ -115,7 +89,6 @@ const Sidebar: React.FC = () => {
                     : "bg-green-300"
                 }`}
               />
->>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
               {!collapsed && item.label}
             </Link>
           </li>

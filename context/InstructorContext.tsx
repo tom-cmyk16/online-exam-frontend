@@ -27,8 +27,4 @@ export const useInstructor = () => {
   if (!context)
     throw new Error("useInstructor must be used within InstructorProvider");
   return context;
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42

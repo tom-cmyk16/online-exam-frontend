@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ES2020"
-    ],
+    "lib": ["DOM", "DOM.Iterable", "ES2020"],
     "module": "ESNext",
     "moduleResolution": "Node",
     "skipLibCheck": true,
@@ -23,19 +19,8 @@
     "isolatedModules": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ]
+      "@/*": ["src/*"]
     }
   },
-<<<<<<< HEAD
-  "include": [
-    "src",
-    "src/core/component/.tsx",
-    "context"
-  ]
-}
-=======
   "include": ["src", "src/core/component/.tsx", "context"]
 }
->>>>>>> 836dc639932a3b64a30b2723853d803464ad6c42
