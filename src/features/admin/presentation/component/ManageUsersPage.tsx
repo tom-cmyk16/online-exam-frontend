@@ -374,7 +374,7 @@ const ManageUsersPage: React.FC = () => {
 
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
     try {
-      await api.patch(`/manageuser/${id}/status`, {}, getAuthConfig());
+      await api.patch(`manageuser/${id}/status`, {}, getAuthConfig());
       setUsers((p) =>
         p.map((u) => (u._id === id ? { ...u, isActive: !currentStatus } : u))
       );
