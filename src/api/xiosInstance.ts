@@ -1,8 +1,11 @@
 import axios from "axios";
 
 // Use proxy in development, full URL in production
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.DEV ? "/api" : "http://localhost:5000/api");
+const API_BASE_URL = 
+  import.meta.env.VITE_API_BASE_URL || // First priority: .env variable
+  (import.meta.env.DEV 
+    ? "http://localhost:5000/api"      // Second priority: Local dev
+    : "https://online-exam-backend-1o6z.onrender.com/api"); // Final fallback: Production
 
 const api = axios.create({
   baseURL: API_BASE_URL,
